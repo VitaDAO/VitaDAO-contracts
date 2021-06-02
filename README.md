@@ -31,12 +31,12 @@ You should see a message that says `Started HTTP and WebSocket JSON-RPC server a
 Before you test, make sure you've changed the timeouts configured in [Raphael.sol](contracts/Raphael.sol):
 
 ```
-    uint256 public CREATE_TO_VOTE_PROPOSAL_DELAY = 18500; // ~3 days
-    uint256 public VOTING_DURATION = 30850; // ~5 days
+uint256 public CREATE_TO_VOTE_PROPOSAL_DELAY = 18500; // ~3 days
+uint256 public VOTING_DURATION = 30850; // ~5 days
 
-    // for testing
-    // uint256 public CREATE_TO_VOTE_PROPOSAL_DELAY = 5;
-    // uint256 public VOTING_DURATION = 10;
+// for testing
+// uint256 public CREATE_TO_VOTE_PROPOSAL_DELAY = 5;
+// uint256 public VOTING_DURATION = 10;
 ```
 
 If you fail to do this, the tests will appear to freeze and take a forever to finish. If that happens, Ctrl-C out of that process and use the testing timeouts above. 
@@ -49,6 +49,8 @@ If you have the local development chain running, you can run the tests immediate
 # Run the whole test suite
 yarn test
 ```
+
+The tests take a while to run. The test terminal may not update often while the tests run, but the terminal with the running hardhat server should show many transactions or mining of blocks occurring. Be patient, the should all pass after a while.
 
 ### Without the local development running
 
