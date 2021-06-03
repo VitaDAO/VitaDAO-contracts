@@ -6,11 +6,23 @@ Governance Contracts for VitaDAO
 
 Navigate to the root of the repository directory in your terminal. 
 
-If you don't have [hardhat](https://hardhat.org/) installed, you will need it: 
+If you don't have [hardhat](https://hardhat.org/) installed, you will need it.
+
+Install the project dependencies (including hardhat): 
 
 ```
-yarn add hardhat
+yarn install
 ```
+
+## Compiling the Contracts
+
+To compile the contracts, just run: 
+
+```
+yarn compile
+```
+
+Compile before you run locally or run the tests. 
 
 ## Instructions for deploying locally (dev chain)
 
@@ -39,7 +51,7 @@ uint256 public VOTING_DURATION = 30850; // ~5 days
 // uint256 public VOTING_DURATION = 10;
 ```
 
-If you fail to do this, the tests will appear to freeze and take a forever to finish. If that happens, Ctrl-C out of that process and use the testing timeouts above. 
+If you fail to do this, the tests will take forever and ultimately fail when javascript runs out of memory. If that happens, Ctrl-C out of that process and use the testing timeouts above. 
 
 ### Against the already started local dev chain (as you ran above)
 
@@ -67,10 +79,4 @@ This will start a local network to which the tests can connect. Then you are fre
 yarn test
 ```
 
-# Compiling the Contracts
 
-To compile the contracts, just run: 
-
-```
-yarn compile
-```
