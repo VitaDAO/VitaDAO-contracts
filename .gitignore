@@ -1,14 +1,9 @@
-
-# CHAIN
-
-node_modules/
-artifacts/
+/node_modules/
+/artifacts/
+/artifacts/**
 cache/
 yarn.lock
 yarn-error.log
 .env
 .DS_Store
 package-lock.json
-
-# MOLOCH
-
