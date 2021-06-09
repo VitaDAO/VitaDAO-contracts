@@ -12,7 +12,8 @@
     "test:token": "npx hardhat test test/Raphael/token.test.ts",
     "start": "npx hardhat node",
     "deploy": "npx hardhat run scripts/deploy.ts",
-    "chain": "npx hardhat node"
+    "chain": "npx hardhat node",
+    "clean": "npx hardhat clean"
   },
   "dependencies": {
     "@nomiclabs/hardhat-ethers": "^2.0.1",
