@@ -22,6 +22,7 @@ To compile the contracts, just run:
 
 ```Shell
 yarn compile
+```
 
 
 Compile before you run locally or run the tests. 
