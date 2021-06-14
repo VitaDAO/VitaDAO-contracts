@@ -15,7 +15,7 @@ jobs:
         run: |
           yarn
           yarn global add ganache-cli@~6.12.2
-          ganache-cli &
+          npx ganache-cli &
       - name: Compile
         run: |
           yarn compile
