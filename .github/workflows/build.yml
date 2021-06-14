@@ -1,0 +1,24 @@
+name: Build and Tests
+
+on: push
+
+jobs:
+
+  tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-node@v1
+        with:
+          node-version: '12.x'
+      - name: Pre-install
+        run: |
+          yarn
+          yarn global add ganache-cli@~6.12.2
+          ganache-cli &
+      - name: Compile
+        run: |
+          yarn compile
+      - name: Run Unit Tests
+        run: |
+          yarn test
