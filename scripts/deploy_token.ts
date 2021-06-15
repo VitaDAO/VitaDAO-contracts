@@ -60,7 +60,7 @@ async function main() {
   let contracts: DeploymentObject[] = [];
 
   const VITA_CAP = ethers.utils.parseUnits("64298880");
-  const vita =  await deploy("VITA", ["Vita token", "VITA", VITA_CAP]);
+  const vita =  await deploy("VITA", ["VitaDAO Token", "VITA", VITA_CAP]);
   contracts.push(vita);
 
   // verification

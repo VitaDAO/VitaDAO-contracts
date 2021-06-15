@@ -11,11 +11,9 @@
     "test:staking": "npx hardhat test test/Raphael/staking.test.ts",
     "test:token": "npx hardhat test test/Raphael/token.test.ts",
     "start": "npx hardhat node",
-    "deploy:local": "npx hardhat run scripts/deploy_dao.ts --network localhost",
     "deploy:token:goerli": "npx hardhat run scripts/deploy_token.ts --network goerli",
+    "deploy:token:rinkeby": "npx hardhat run scripts/deploy_token.ts --network rinkeby",
     "deploy:token:mainnet": "npx hardhat run scripts/deploy_token.ts --network mainnet",
-    "deploy:dao:goerli": "npx hardhat run scripts/deploy_dao.ts --network goerli",
-    "deploy:dao:mainnet": "npx hardhat run scripts/deploy_dao.ts --network mainnet",
     "chain": "npx hardhat node"
   },
   "dependencies": {
