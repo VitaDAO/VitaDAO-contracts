@@ -1,33 +1,12 @@
 import { ethers } from "hardhat";
 import { BigNumber, Contract, Signer } from "ethers";
 import { expect } from "chai";
+import { skipBlocks, CREATE_TO_VOTE_PROPOSAL_DELAY, VOTING_DURATION } from "./utils";
 
-const CREATE_TO_VOTE_PROPOSAL_DELAY = 5 //actually 18500
-const VOTING_DURATION = 10 //actually 30850
 const VITA_CAP = ethers.constants.WeiPerEther.mul(BigNumber.from(64298880))
 
 // Large amount needed to pass quorom + extra for approval loss
 const ONE_ETHER_TOKENS = ethers.constants.WeiPerEther.add(BigNumber.from(10))
-
-const PROPOSAL_STATUS = {
-    VOTING_NOT_STARTED: 0,
-    VOTING: 1,
-    VOTES_FINISHED: 2,
-    RESOLVED: 3,
-    CANCELLED: 4,
-    QUORUM_FAILED: 5,
-}
-
-const skipBlocks = async (blocksToBeSkipped: BigNumber) => {
-    if (blocksToBeSkipped.lt(ethers.constants.Zero)) return null
-    for (
-        let i = BigNumber.from('0');
-        i.lt(blocksToBeSkipped);
-        i = i.add(BigNumber.from('1'))
-    ) {
-        await ethers.provider.send("evm_mine", [])
-    }
-}
 
 describe("Staking System", () => {
     let accounts: Signer[];
@@ -64,6 +43,8 @@ describe("Staking System", () => {
             let Raphael = await ethers.getContractFactory("Raphael");
             raphael = await Raphael.connect(admin).deploy();
             await raphael.deployed();
+            await raphael.connect(admin).setVotingDelayDuration(CREATE_TO_VOTE_PROPOSAL_DELAY)
+            await raphael.connect(admin).setVotingDuration(VOTING_DURATION)
             let Token = await ethers.getContractFactory("VITA");
             token = await Token.connect(admin).deploy("VITA Token", "VITA", VITA_CAP);
             await token.deployed();

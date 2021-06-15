@@ -5,6 +5,7 @@ import "@nomiclabs/hardhat-waffle";
 import { HardhatUserConfig } from 'hardhat/types';
 import * as dotenv from "dotenv";
 require('hardhat-contract-sizer');
+require("hardhat-gas-reporter");
 dotenv.config();
 
 
@@ -27,6 +28,9 @@ const config = {
     alphaSort: true,
     runOnCompile: true,
     disambiguatePaths: false,
+  },
+  gasReporter: {
+    enabled: (process.env.REPORT_GAS === 'true') ? true : false
   },
   networks: {
     localhost: {
