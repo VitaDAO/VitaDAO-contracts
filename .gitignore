@@ -1,6 +1,6 @@
-/node_modules/
-/artifacts/
-/artifacts/**
+node_modules/
+artifacts/
+artifacts/**
 cache/
 yarn.lock
 yarn-error.log

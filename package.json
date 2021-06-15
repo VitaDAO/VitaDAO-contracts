@@ -14,7 +14,8 @@
     "deploy:token:goerli": "npx hardhat run scripts/deploy_token.ts --network goerli",
     "deploy:token:rinkeby": "npx hardhat run scripts/deploy_token.ts --network rinkeby",
     "deploy:token:mainnet": "npx hardhat run scripts/deploy_token.ts --network mainnet",
-    "chain": "npx hardhat node"
+    "chain": "npx hardhat node",
+    "clean": "npx hardhat clean"
   },
   "dependencies": {
     "@nomiclabs/hardhat-ethers": "^2.0.1",
