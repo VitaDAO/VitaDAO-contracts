@@ -3,9 +3,8 @@ import { BigNumber, Contract, Signer } from "ethers";
 import { expect } from "chai";
 
 import * as nftArtifact from "../../artifacts/contracts/MockNFT.sol/MockNFT.json";
+import { skipBlocks, CREATE_TO_VOTE_PROPOSAL_DELAY, VOTING_DURATION } from "./utils";
 
-const CREATE_TO_VOTE_PROPOSAL_DELAY = 18500 //for shorter testing, use 5
-const VOTING_DURATION = 30850 //for shorter testing, use 10
 const VITA_CAP = ethers.constants.WeiPerEther.mul(BigNumber.from(64298880))
 
 const PROPOSAL_STATUS = {
@@ -18,16 +17,6 @@ const PROPOSAL_STATUS = {
 }
 
 const MIN_QUORUM = ethers.utils.parseUnits("964483.2");
-
-const skipBlocks = async (blocksToBeSkipped: BigNumber) => {
-    for (
-        let i = BigNumber.from('0');
-        i.lt(blocksToBeSkipped);
-        i = i.add(BigNumber.from('1'))
-    ) {
-        await ethers.provider.send("evm_mine", [])
-    }
-}
 
 describe("Raphael DAO contract", () => {
     let accounts: Signer[];
@@ -58,6 +47,8 @@ describe("Raphael DAO contract", () => {
             const Raphael = await ethers.getContractFactory("Raphael");
             raphael = await Raphael.connect(admin).deploy();
             await raphael.deployed();
+            await raphael.connect(admin).setVotingDelayDuration(CREATE_TO_VOTE_PROPOSAL_DELAY)
+            await raphael.connect(admin).setVotingDuration(VOTING_DURATION)
         });
 
 
@@ -1209,22 +1200,22 @@ describe("Raphael DAO contract", () => {
 
                 it("delay to voting cannot be less than minimum duration length", async () => {
                     await expect(raphael.connect(admin).setVotingDelayDuration(BigNumber.from("1")))
-                        .to.be.revertedWith("duration must be >30850 <190000");
+                        .to.be.revertedWith("duration must be >5 <190000");
                 });
 
                 it("voting duration cannot be less than minimum duration length", async () => {
                     await expect(raphael.connect(admin).setVotingDuration(BigNumber.from("1")))
-                        .to.be.revertedWith("duration must be >30850 <190000");
+                        .to.be.revertedWith("duration must be >5 <190000");
                 });
 
                 it("delay to voting cannot be more than maximum duration length", async () => {
                     await expect(raphael.connect(admin).setVotingDelayDuration(BigNumber.from("190001")))
-                        .to.be.revertedWith("duration must be >30850 <190000");
+                        .to.be.revertedWith("duration must be >5 <190000");
                 });
 
                 it("voting duration cannot be more than maximum duration length", async () => {
                     await expect(raphael.connect(admin).setVotingDuration(BigNumber.from("190001")))
-                        .to.be.revertedWith("duration must be >30850 <190000");
+                        .to.be.revertedWith("duration must be >5 <190000");
                 });
             });
 
@@ -2304,6 +2295,9 @@ describe("Raphael DAO contract", () => {
                 const Raphael = await ethers.getContractFactory("Raphael");
                 raphael = await Raphael.connect(admin).deploy();
                 await raphael.deployed();
+
+                await raphael.connect(admin).setVotingDelayDuration(CREATE_TO_VOTE_PROPOSAL_DELAY)
+                await raphael.connect(admin).setVotingDuration(VOTING_DURATION)
 
                 let Token = await ethers.getContractFactory("VITA");
                 token = await Token.connect(admin).deploy("VITA Token", "VITA", VITA_CAP);

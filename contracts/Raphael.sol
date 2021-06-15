@@ -47,10 +47,6 @@ contract Raphael is ERC721Holder, Ownable, ReentrancyGuard {
     uint256 public CREATE_TO_VOTE_PROPOSAL_DELAY = 18500; // ~3 days
     uint256 public VOTING_DURATION = 30850; // ~5 days
 
-    // for testing
-    // uint256 public CREATE_TO_VOTE_PROPOSAL_DELAY = 5;
-    // uint256 public VOTING_DURATION = 10;
-
     // commenting out for testing
     uint256 public constant MIN_DURATION = 5; // testing value
     uint256 public constant MAX_DURATION = 190000; // ~1 month
@@ -213,7 +209,7 @@ contract Raphael is ERC721Holder, Ownable, ReentrancyGuard {
     function setVotingDelayDuration(uint256 newDuration) public onlyOwner {
         require(
             newDuration > MIN_DURATION && newDuration < MAX_DURATION,
-            "duration must be >30850 <190000"
+            "duration must be >5 <190000"
         );
         CREATE_TO_VOTE_PROPOSAL_DELAY = newDuration;
 
@@ -223,7 +219,7 @@ contract Raphael is ERC721Holder, Ownable, ReentrancyGuard {
     function setVotingDuration(uint256 newDuration) public onlyOwner {
         require(
             newDuration > MIN_DURATION && newDuration < MAX_DURATION,
-            "duration must be >30850 <190000"
+            "duration must be >5 <190000"
         );
         VOTING_DURATION = newDuration;
 
