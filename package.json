@@ -46,6 +46,7 @@
     "ethers": "^5.0.23",
     "hardhat": "^2.2.0",
     "hardhat-contract-sizer": "^2.0.3",
+    "hardhat-gas-reporter": "^1.0.4",
     "prompt-confirm": "^2.0.4",
     "standard": "^11.0.0",
     "ts-node": "^9.1.0",
