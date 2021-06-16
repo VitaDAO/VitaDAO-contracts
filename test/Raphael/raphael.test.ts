@@ -84,8 +84,8 @@ describe("Raphael DAO contract", () => {
                     expect(await raphael.getStakingAddress())
                         .to.equal(staking.address);
 
-                    await token.connect(admin).approve(staking.address, MIN_QUORUM.add(1));
-                    await token.connect(user).approve(staking.address, MIN_QUORUM.add(1));
+                    await token.connect(admin).approve(staking.address, MIN_QUORUM);
+                    await token.connect(user).approve(staking.address, MIN_QUORUM);
 
                     await staking.connect(admin).stake(MIN_QUORUM);
                     await staking.connect(user).stake(MIN_QUORUM);
@@ -272,6 +272,46 @@ describe("Raphael DAO contract", () => {
                     const newLockedUntil = (await staking.getUnlockTime(userAddress));
 
                     expect(newLockedUntil.gt(origLockedUntil)).to.be.true;
+                });
+
+                it("end block is the last block where votes can be cast", async () => {
+                    expect(await raphael.proposalCount()).to.equal(0);
+                    let tx = await (await raphael.connect(admin).createProposal("Proposal n details")).wait()
+                    const filteredEvents = tx?.events.filter((eventItem: any) => eventItem.event === "ProposalCreated")
+                        .map((eventItem: any) => eventItem.args)
+                    const { proposalId, vote_start, vote_end } = filteredEvents[0];
+
+                    let blocks_skipped = vote_start.sub(BigNumber.from(tx.blockNumber))
+
+                    await skipBlocks(blocks_skipped)
+
+                    // updateProposalStatus to 1 = VOTING
+                    tx = await (await raphael.connect(admin).updateProposalStatus(proposalId)).wait()
+                    let status = (await raphael.getProposalData(proposalId))[5]
+                    expect(status).to.equal((BigNumber.from(PROPOSAL_STATUS.VOTING))) // now in voting period
+
+                    // check user's balance (voting power)
+                    let userStakedBalance = await staking.getStakedBalance(userAddress)
+
+                    // the +2 is to account for the two blocks mined since
+                    blocks_skipped = vote_end.sub((await ethers.provider.getBlockNumber()) + 1);
+                    await skipBlocks(blocks_skipped);
+                    // user votes true (for)
+                    await raphael.connect(user).vote(proposalId, true);
+
+                    // the user vote should push past the voting period
+                    await expect(raphael.connect(admin).vote(proposalId, true))
+                        .to.be.revertedWith("Proposal not in voting period");
+
+                    // check current votes for and against proposal
+                    let proposalData = await raphael.getProposalData(proposalId)
+                    let votesFor = proposalData[1]
+                    let votesAgainst = proposalData[2]
+
+                    // expect votesFor to be user's token balance
+                    expect(votesFor).to.equal(userStakedBalance);
+                    // expect no votes against
+                    expect(votesAgainst.eq(ethers.constants.Zero))
                 });
 
                 // tests getProposalResult() and setProposalToResolved()
@@ -1549,6 +1589,7 @@ describe("Raphael DAO contract", () => {
 
             describe("Emergency Shutdown", () => {
                 let secondNFT: Contract;
+                let evilNFT: Contract;
 
                 const mintNFTs = async () => {
                     for (let i = 1; i < 11; i++) {
@@ -1559,6 +1600,13 @@ describe("Raphael DAO contract", () => {
                         expect(await contract.ownerOf(BigNumber.from(Math.floor(i / 2).toString())))
                             .to.equal(raphael.address);
                     }
+                }
+
+                const mintandTransferEvilNFT = async () => {
+                    let EvilNFT = await ethers.getContractFactory("EvilMockNFT");
+                    evilNFT = await EvilNFT.connect(user).deploy();
+
+                    await evilNFT.connect(user).mint(raphael.address, BigNumber.from("1"));
                 }
 
                 beforeEach(async () => {
@@ -1868,19 +1916,6 @@ describe("Raphael DAO contract", () => {
                         .to.be.revertedWith("cannot be called after shutdown");
                 })
 
-                // taken out to save gas
-                // it("sends native token balance to admins", async () => {
-                //     const initialRaphaelBalance = await raphael.getNativeTokenBalance();
-                //     const initialAdminBalance = await token.balanceOf(adminAddress);
-
-                //     await raphael.connect(admin).emergencyShutdown();
-
-                //     expect(await raphael.getNativeTokenBalance())
-                //         .to.equal(ethers.constants.Zero);
-                //     expect(await token.balanceOf(adminAddress))
-                //         .to.equal(initialAdminBalance.add(initialRaphaelBalance));
-                // });
-
                 it("shuts down staking contract", async () => {
                     expect(await staking.isShutdown())
                         .to.be.false;
@@ -1949,6 +1984,30 @@ describe("Raphael DAO contract", () => {
                     expect(await secondNFT.isApprovedForAll(raphael.address, adminAddress))
                         .to.be.true;
                 });
+
+                it("testing evilness of evil NFTs", async () => {
+                    await mintandTransferEvilNFT();
+                    await evilNFT.connect(user).mint(userAddress, BigNumber.from("2"));
+
+                    await expect(evilNFT.connect(user).setApprovalForAll(adminAddress, true))
+                        .to.be.revertedWith("not gonna shut down now, are you?");
+                });
+
+                it("evil NFTs do not cause Emergency Shutdown to revert", async () => {
+                    await mintandTransferEvilNFT();
+
+                    await expect(raphael.connect(admin).emergencyShutdown())
+                        .to.not.be.reverted;
+                });
+
+                it("evil NFTs do not stop real NFTs from being approved", async () => {
+                    await mintandTransferEvilNFT();
+                    await mintNFTs();
+
+                    await expect(raphael.connect(admin).emergencyShutdown())
+                        .to.not.be.reverted;
+                });
+                
             })
         })
 
@@ -2168,6 +2227,7 @@ describe("Raphael DAO contract", () => {
             });
             describe("Emergency Shutdown events", () => {
                 let secondNFT: Contract;
+                let evilNFT: Contract;
 
                 const mintNfts = async () => {
                     for (let i = 1; i < 11; i++) {
@@ -2180,6 +2240,13 @@ describe("Raphael DAO contract", () => {
                             .to.equal(raphael.address);
                     }
                 };
+
+                const mintandTransferEvilNFT = async () => {
+                    let EvilNFT = await ethers.getContractFactory("EvilMockNFT");
+                    evilNFT = await EvilNFT.connect(user).deploy();
+
+                    await evilNFT.connect(user).mint(raphael.address, BigNumber.from("1"));
+                }
 
                 beforeEach(async () => {
                     let Token = await ethers.getContractFactory("VITA");
@@ -2267,6 +2334,20 @@ describe("Raphael DAO contract", () => {
                     await expect(raphael.connect(admin).emergencyShutdown())
                         .to.emit(raphael, "EmergencyNFTApproval")
                         .withArgs(adminAddress, [ethers.constants.AddressZero, ethers.constants.AddressZero]);
+                });
+
+                it("emits EmergencyNFTApprovalFail if there are evil NFTs", async () => {
+                    await mintandTransferEvilNFT();
+
+                    await expect(raphael.connect(admin).emergencyShutdown())
+                        .to.emit(raphael, "EmergencyNFTApprovalFail")
+                        .withArgs(evilNFT.address);
+                });
+
+                it("does not emit EmergencyNFTApprovalFail if there are not evil NFTs", async () => {
+                    await mintNfts();
+                    await expect(raphael.connect(admin).emergencyShutdown())
+                        .to.not.emit(raphael, "EmergencyNFTApprovalFail");
                 });
 
                 it("EmergencyShutdown emitted properly", async () => {
