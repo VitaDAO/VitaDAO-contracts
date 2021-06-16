@@ -11,7 +11,9 @@
     "test:staking": "npx hardhat test test/Raphael/staking.test.ts",
     "test:token": "npx hardhat test test/Raphael/token.test.ts",
     "start": "npx hardhat node",
-    "deploy": "npx hardhat run scripts/deploy.ts",
+    "deploy:token:goerli": "npx hardhat run scripts/deploy_token.ts --network goerli",
+    "deploy:token:rinkeby": "npx hardhat run scripts/deploy_token.ts --network rinkeby",
+    "deploy:token:mainnet": "npx hardhat run scripts/deploy_token.ts --network mainnet",
     "chain": "npx hardhat node",
     "clean": "npx hardhat clean"
   },

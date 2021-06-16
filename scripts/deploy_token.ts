@@ -13,7 +13,7 @@ interface DeploymentObject {
 }
 
 // custom `deploy` in order to make verifying easier
-const deploy = async (contractName: string, _args = [], overrides = {}, libraries = {}) => {
+const deploy = async (contractName: string, _args: any[] = [], overrides = {}, libraries = {}) => {
   console.log(` 🛰  Deploying: ${contractName}`);
 
   const contractArgs: any = _args || [];
@@ -33,6 +33,8 @@ const deploy = async (contractName: string, _args = [], overrides = {}, librarie
 
   return deployed
 }
+
+const verifiableNetwork = ["mainnet", "ropsten", "rinkeby", "goerli", "kovan"];
 
 async function main() {
   const network = process.env.HARDHAT_NETWORK === undefined ? "localhost" : process.env.HARDHAT_NETWORK;
@@ -55,33 +57,15 @@ async function main() {
     console.log("Account balance:", (await deployer.getBalance()).toString());
   }
 
-  // this array stores the data for contract verification
   let contracts: DeploymentObject[] = [];
 
-  // In order to set scripts for certain nets (rinkeby, mainnet), use the 
-  // network variable. For example, if you want to set conditions that are 
-  // only triggered in a mainnet deployment:
-  // if(network === "mainnet"){
-  //   // set logic here
-  // }
-
-  // some notes on the deploy function: 
-  //    - arguments should be passed in an array after the contract name
-  //      args need to be formatted properly for verification to pass
-  //      see: https://hardhat.org/plugins/nomiclabs-hardhat-etherscan.html#complex-arguments
-  //      example: await deploy("Token", ["Test", "TST"]);
-  //    - custom ethers parameters like gasLimit go in an object after that
-  //      EVEN IF THERE ARE NO ARGS (put an empty array for the args)
-  //      example: await deploy("Token", [], { gasLimit: 300000 });
-  //    - libraries can be added by address after that
-  //      example: await deploy("Token", [], {}, { "SafeMath": "0x..."});
-  const example =  await deploy("Example");
-  contracts.push(example);
+  const VITA_CAP = ethers.utils.parseUnits("64298880");
+  const vita =  await deploy("VITA", ["VitaDAO Token", "VITA", VITA_CAP]);
+  contracts.push(vita);
 
   // verification
   if(
-    network !== "localhost" && 
-    network !== "hardhat"
+    verifiableNetwork.includes(network)
     ) {
       let counter = 0;
       
@@ -110,8 +94,6 @@ async function main() {
         }
       }, 1000);
 
-      // there may be some issues with contracts using libraries 
-      // if you experience problems, refer to https://hardhat.org/plugins/nomiclabs-hardhat-etherscan.html#providing-libraries-from-a-script-or-task
       // tslint:disable-next-line: no-console
       console.log(chalk.cyan("\n🔍 Running Etherscan verification..."));
       
@@ -130,6 +112,7 @@ async function main() {
           console.log(error);
         }
       }));
+  }
 }
 
 main()
