@@ -1614,13 +1614,6 @@ describe("Raphael DAO contract", () => {
                     await raphael.connect(admin).transferNativeToken(adminAddress, await raphael.getNativeTokenBalance());
                 });
 
-                it("does not shutdown if the DAO still has native assets", async () => {
-                    await token.connect(admin).transfer(raphael.address, 1);
-
-                    await expect(raphael.connect(admin).emergencyShutdown())
-                        .to.be.revertedWith("transfer tokens before shutdown")
-                })
-
                 it("locks setStakingAddress", async () => {
                     await raphael.connect(admin).emergencyShutdown();
 
@@ -2225,17 +2218,17 @@ describe("Raphael DAO contract", () => {
                     await raphael.connect(admin).transferNativeToken(adminAddress, await raphael.getNativeTokenBalance());
                 });
 
-                it("emits EmergencyProposalCancellation if there is a proposal cancelled", async () => {
+                it("emits ProposalStatusChanged if there is a proposal cancelled", async () => {
                     await raphael.connect(user).createProposal("Proposal 1 details")
 
                     await expect(raphael.connect(admin).emergencyShutdown())
-                        .to.emit(raphael, "EmergencyProposalCancellation")
-                        .withArgs(adminAddress, BigNumber.from("1"));
+                        .to.emit(raphael, "ProposalStatusChanged")
+                        .withArgs(BigNumber.from("1"), PROPOSAL_STATUS.CANCELLED);
                 });
 
-                it("does not emit EmergencyProposalCancellation if there is no proposal cancelled", async () => {
+                it("does not emit ProposalStatusChanged if there is no proposal cancelled", async () => {
                     await expect(raphael.connect(admin).emergencyShutdown())
-                        .to.not.emit(raphael, "EmergencyProposalCancellation");
+                        .to.not.emit(raphael, "ProposalStatusChanged");
                 });
 
                 it("emits EmergencyNFTApproval on shutdown", async () => {

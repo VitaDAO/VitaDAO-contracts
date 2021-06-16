@@ -9,10 +9,8 @@ contract Staking is IStaking, ReentrancyGuard {
     mapping(address => uint256) private _stakedBalances;
     mapping(address => uint256) private _unlockTimes;
 
-    // TODO make sure this can be changed to point to new contracts
     address public tokenAddress;
     address public daoAddress;
-    IERC20 tokenContract;
     uint256 totalStakedBalance;
     bool shutdown=false;
 
@@ -33,7 +31,6 @@ contract Staking is IStaking, ReentrancyGuard {
     constructor(address _token, address _dao) {
         tokenAddress = _token;
         daoAddress = _dao;
-        tokenContract = IERC20(_token);
     }
 
     /**
@@ -99,8 +96,9 @@ contract Staking is IStaking, ReentrancyGuard {
      * @notice user must first approve staking contract for at least the amount
      */
     function stake(uint256 amount) external notShutdown override {
+        IERC20 tokenContract = IERC20(tokenAddress);
         require(tokenContract.balanceOf(msg.sender) >= amount, "Amount higher than user's balance");
-        require(tokenContract.allowance(msg.sender, address(this)) > amount, 'Approved allowance too low');
+        require(tokenContract.allowance(msg.sender, address(this)) >= amount, 'Approved allowance too low');
         require(
             tokenContract.transferFrom(msg.sender, address(this), amount),
             "staking tokens failed"
@@ -128,6 +126,7 @@ contract Staking is IStaking, ReentrancyGuard {
         // Send unlocked tokens back to user
         totalStakedBalance -= amount;
         _stakedBalances[msg.sender] -= amount;
+        IERC20 tokenContract = IERC20(tokenAddress);
         require(tokenContract.transfer(msg.sender, amount), "withdraw failed");
     }
 

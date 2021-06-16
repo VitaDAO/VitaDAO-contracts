@@ -39,8 +39,6 @@ contract Raphael is ERC721Holder, Ownable, ReentrancyGuard {
     address private nativeTokenAddress;
     address private stakingContractAddress;
     address[] private nftContractAddresses;
-    IVITA nativeTokenContract;
-    IStaking stakingContract;
 
     bool private shutdown = false;
 
@@ -48,6 +46,7 @@ contract Raphael is ERC721Holder, Ownable, ReentrancyGuard {
     uint256 public VOTING_DURATION = 30850; // ~5 days
 
     // commenting out for testing
+    // uint256 public constant MIN_DURATION = 30850;
     uint256 public constant MIN_DURATION = 5; // testing value
     uint256 public constant MAX_DURATION = 190000; // ~1 month
 
@@ -71,11 +70,11 @@ contract Raphael is ERC721Holder, Ownable, ReentrancyGuard {
     event NFTReceived(address nftContract, address sender, uint256 tokenId);
     event NFTTransferred(address nftContract, address to, uint256 tokenId);
     event EmergencyShutdown(address triggeredBy, uint256 currentBlock);
-    event EmergencyProposalCancellation(address triggeredBy, uint256 index);
     event EmergencyNFTApproval(
         address triggeredBy,
         address[] nftContractAddresses
     );
+    event EmergencyNFTApprovalFail(address nftContractAddress);
 
     event ProposalCreated(
         uint256 proposalId,
@@ -114,7 +113,7 @@ contract Raphael is ERC721Holder, Ownable, ReentrancyGuard {
             uint8
         )
     {
-        require(proposalIndex <= proposalCount, "Proposal doesn't exist");
+        require(proposalIndex <= proposalCount && proposalIndex !=0, "Proposal doesn't exist");
         return (
             proposals[proposalIndex].details,
             proposals[proposalIndex].votesFor,
@@ -135,7 +134,7 @@ contract Raphael is ERC721Holder, Ownable, ReentrancyGuard {
         view
         returns (bool)
     {
-        require(proposalIndex <= proposalCount, "Proposal doesn't exist");
+        require(proposalIndex <= proposalCount && proposalIndex !=0, "Proposal doesn't exist");
         require(
             proposals[proposalIndex].status == ProposalStatus.VOTES_FINISHED ||
                 proposals[proposalIndex].status == ProposalStatus.RESOLVED ||
@@ -175,6 +174,7 @@ contract Raphael is ERC721Holder, Ownable, ReentrancyGuard {
      * @dev returns the DAO's balance of the native token
      */
     function getNativeTokenBalance() public view returns (uint256) {
+        IVITA nativeTokenContract = IVITA(nativeTokenAddress);
         return nativeTokenContract.balanceOf(address(this));
     }
 
@@ -235,9 +235,10 @@ contract Raphael is ERC721Holder, Ownable, ReentrancyGuard {
         onlyOwner
         notShutdown
     {
+        IVITA nativeTokenContract = IVITA(nativeTokenAddress);
         require(newVotesNeeded > 0, "quorum cannot be 0");
         require(
-            newVotesNeeded < nativeTokenContract.totalSupply(),
+            newVotesNeeded <= nativeTokenContract.totalSupply(),
             "votes needed > token supply"
         );
         minVotesNeeded = newVotesNeeded;
@@ -255,7 +256,6 @@ contract Raphael is ERC721Holder, Ownable, ReentrancyGuard {
     {
         address oldAddress = stakingContractAddress;
         stakingContractAddress = _stakingContractAddress;
-        stakingContract = IStaking(stakingContractAddress);
         emit StakingAddressChanged(
             stakingContractAddress,
             oldAddress,
@@ -275,7 +275,6 @@ contract Raphael is ERC721Holder, Ownable, ReentrancyGuard {
     {
         address oldAddress = nativeTokenAddress;
         nativeTokenAddress = tokenContractAddress;
-        nativeTokenContract = IVITA(nativeTokenAddress);
         emit NativeTokenChanged(nativeTokenAddress, oldAddress, _msgSender());
     }
 
@@ -293,6 +292,7 @@ contract Raphael is ERC721Holder, Ownable, ReentrancyGuard {
         notShutdown
         nonReentrant
     {
+        IStaking stakingContract = IStaking(stakingContractAddress);
         require(
             stakingContract.getStakedBalance(_msgSender()) > 0,
             "must stake to create proposal"
@@ -329,9 +329,9 @@ contract Raphael is ERC721Holder, Ownable, ReentrancyGuard {
      * @param proposalIndex          uint proposal key
      */
     function updateProposalStatus(uint256 proposalIndex) public notShutdown {
-        require(proposalIndex <= proposalCount, "Proposal doesn't exist");
+        require(proposalIndex <= proposalCount && proposalIndex !=0, "Proposal doesn't exist");
 
-        Proposal memory currentProp = proposals[proposalIndex];
+        Proposal storage currentProp = proposals[proposalIndex];
         // Can't change status of CANCELLED or RESOLVED proposals
         require(
             currentProp.status != ProposalStatus.CANCELLED,
@@ -404,7 +404,7 @@ contract Raphael is ERC721Holder, Ownable, ReentrancyGuard {
         onlyOwner
         notShutdown
     {
-        require(proposalIndex <= proposalCount, "Proposal doesn't exist");
+        require(proposalIndex <= proposalCount && proposalIndex !=0, "Proposal doesn't exist");
         require(
             proposals[proposalIndex].status == ProposalStatus.VOTES_FINISHED,
             "Proposal not in VOTES_FINISHED"
@@ -424,7 +424,7 @@ contract Raphael is ERC721Holder, Ownable, ReentrancyGuard {
         onlyOwner
         notShutdown
     {
-        require(proposalIndex <= proposalCount, "Proposal doesn't exist");
+        require(proposalIndex <= proposalCount && proposalIndex !=0, "Proposal doesn't exist");
         require(
             proposals[proposalIndex].status != ProposalStatus.VOTES_FINISHED,
             "Can't cancel if vote finished"
@@ -452,6 +452,9 @@ contract Raphael is ERC721Holder, Ownable, ReentrancyGuard {
      * @param _vote                   true = for, false = against
      */
     function vote(uint256 proposalIndex, bool _vote) public notShutdown {
+        require(proposalIndex <= proposalCount && proposalIndex !=0, "Proposal doesn't exist");
+
+        IStaking stakingContract = IStaking(stakingContractAddress);
         uint256 stakedBalance = stakingContract.getStakedBalance(_msgSender());
         require(stakedBalance > 0, "must stake to vote");
         // check msg.sender hasn't already voted
@@ -460,7 +463,7 @@ contract Raphael is ERC721Holder, Ownable, ReentrancyGuard {
             "Already voted from this address"
         );
 
-        Proposal memory currentProp = proposals[proposalIndex];
+        Proposal storage currentProp = proposals[proposalIndex];
 
         // Call updateProposalStatus() if proposal should be in VOTING stage
         require(
@@ -468,8 +471,6 @@ contract Raphael is ERC721Holder, Ownable, ReentrancyGuard {
                 block.number <= currentProp.endBlock,
             "Proposal not in voting period"
         );
-
-        // TODO add delegated voting power here - post-MVP
 
         if (_vote) {
             currentProp.votesFor += stakedBalance;
@@ -504,6 +505,7 @@ contract Raphael is ERC721Holder, Ownable, ReentrancyGuard {
      */
     function mintNativeToken(uint256 _amount) public onlyOwner notShutdown {
         require(_amount > 0, "Can't mint 0 tokens");
+        IVITA nativeTokenContract = IVITA(nativeTokenAddress);
         
         nativeTokenContract.mint(address(this), _amount);
     } 
@@ -522,6 +524,7 @@ contract Raphael is ERC721Holder, Ownable, ReentrancyGuard {
         notShutdown
         returns (bool)
     {
+        IVITA nativeTokenContract = IVITA(nativeTokenAddress);
         require(
             nativeTokenContract.transfer(to, amount),
             "ERC20 transfer failed"
@@ -580,8 +583,6 @@ contract Raphael is ERC721Holder, Ownable, ReentrancyGuard {
      * @notice this is an irreversible process!
      */
     function emergencyShutdown() public onlyOwner notShutdown nonReentrant {
-        require(getNativeTokenBalance() == 0, "transfer tokens before shutdown");
-
         // cancel all active proposals
         // there is no proposal in the zero slot
         for (uint256 i = 1; i <= proposalCount; i++) {
@@ -590,18 +591,23 @@ contract Raphael is ERC721Holder, Ownable, ReentrancyGuard {
                 proposals[i].status != ProposalStatus.QUORUM_FAILED
             ) {
                 proposals[i].status = ProposalStatus.CANCELLED;
-                emit EmergencyProposalCancellation(_msgSender(), i);
+                emit ProposalStatusChanged(i, ProposalStatus.CANCELLED);
             }
         }
 
+        IStaking stakingContract = IStaking(stakingContractAddress);
         stakingContract.emergencyShutdown(_msgSender());
 
         // approve all NFTs
         for (uint256 i = 0; i < nftContractAddresses.length; i++) {
             if (nftContractAddresses[i] != address(0)) {
                 IERC721 nftContract = IERC721(nftContractAddresses[i]);
-                if (!nftContract.isApprovedForAll(address(this), owner()))
-                    nftContract.setApprovalForAll(owner(), true);
+                if (!nftContract.isApprovedForAll(address(this), owner())) {
+                    try nftContract.setApprovalForAll(owner(), true) {
+                    } catch {
+                        emit EmergencyNFTApprovalFail(nftContractAddresses[i]);
+                    }
+                }
             }
         }
         emit EmergencyNFTApproval(_msgSender(), nftContractAddresses);
