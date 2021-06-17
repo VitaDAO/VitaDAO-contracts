@@ -182,15 +182,20 @@ describe("Staking System", () => {
                     let tx = await staking.connect(user1Alice).stake(ONE_ETHER_TOKENS.sub(BigNumber.from(1)))
 
                     // skip blocks to get to voting period
-                    let blockToSkip = proposal.data[3].sub(tx.blockNumber)
-                    await skipBlocks(blockToSkip)
+                    let blocksToSkip = proposal.data[3].sub(tx.blockNumber)
+                    await skipBlocks(blocksToSkip)
                     await raphael.connect(admin).updateProposalStatus(proposal.id)
 
                     // Alice votes
                     tx = await raphael.connect(user1Alice).vote(proposal.id, true)
 
                     // check block is before end of proposal - can't withdraw
-                    expect(BigNumber.from(tx.blockNumber).lt(proposal.data[4]))
+                    // expect(BigNumber.from(tx.blockNumber).lt(proposal.data[4]))
+
+                    // we'll skip to the endTime block just to check
+                    // there will be 3 blocks mined (outside skipping) in total, 
+                    // so we subtract 3
+                    await skipBlocks(BigNumber.from(`${VOTING_DURATION - 3}`));
 
                     // Should revert - not out of voting period
                     await expect(
