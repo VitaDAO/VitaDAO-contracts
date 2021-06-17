@@ -45,8 +45,9 @@ contract Raphael is ERC721Holder, Ownable, ReentrancyGuard {
     uint256 public CREATE_TO_VOTE_PROPOSAL_DELAY = 18500; // ~3 days
     uint256 public VOTING_DURATION = 30850; // ~5 days
 
-    // commenting out for testing
-    // uint256 public constant MIN_DURATION = 30850;
+    // comment out for testing
+    // uint256 public constant MIN_DURATION = 18500;
+    // remove testing value for production
     uint256 public constant MIN_DURATION = 5; // testing value
     uint256 public constant MAX_DURATION = 190000; // ~1 month
 
