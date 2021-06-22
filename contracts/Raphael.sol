@@ -73,7 +73,9 @@ contract Raphael is ERC721Holder, Ownable, ReentrancyGuard {
     event EmergencyShutdown(address triggeredBy, uint256 currentBlock);
     event EmergencyNFTApproval(
         address triggeredBy,
-        address[] nftContractAddresses
+        address[] nftContractAddresses,
+        uint256 startIndex,
+        uint256 endIndex
     );
     event EmergencyNFTApprovalFail(address nftContractAddress);
 
@@ -565,15 +567,6 @@ contract Raphael is ERC721Holder, Ownable, ReentrancyGuard {
             "NFT transfer failed"
         );
 
-        if (nftContract.balanceOf(address(this)) == 0) {
-            for (uint256 i = 0; i < nftContractAddresses.length; i++) {
-                if (nftContractAddresses[i] == nftContractAddress) {
-                    delete nftContractAddresses[i];
-                    break;
-                }
-            }
-        }
-
         emit NFTTransferred(nftContractAddress, recipient, tokenId);
         return true;
     }
@@ -590,8 +583,11 @@ contract Raphael is ERC721Holder, Ownable, ReentrancyGuard {
       * @notice can only be called after shutdown, is called during shutdown
       */
     function emergencyProposalCancellation(uint256 startIndex, uint256 endIndex) external onlyShutdown onlyOwner {
+        require(endIndex > startIndex, "end index must be > start index");
         // there is no proposal in the zero slot
         require(startIndex > 0, "starting index must exceed 0");
+        // needs to be proposal count + 1 since end index is one past the last cancelled proposal
+        require(endIndex <= proposalCount + 1, "end index > proposal count + 1");
         for (uint256 i = startIndex; i < endIndex; i++) {
             if (
                 proposals[i].status != ProposalStatus.RESOLVED &&
@@ -610,8 +606,8 @@ contract Raphael is ERC721Holder, Ownable, ReentrancyGuard {
       *
       * @notice can only be called after shutdown, is called during shutdown
       */
-    function emergencyNftApproval(uint256 startIndex, uint256 endIndex) public onlyOwner onlyShutdown {
-        require(startIndex >= 0, "starting index must be >= 0");
+    function emergencyNftApproval(uint256 startIndex, uint256 endIndex) external onlyOwner onlyShutdown {
+        require(endIndex > startIndex, "end index must be > start index");
         require(endIndex <= nftContractAddresses.length, "end index > nft array len");
         for (uint256 i = startIndex; i < endIndex; i++) {
             if (nftContractAddresses[i] != address(0)) {
@@ -624,7 +620,8 @@ contract Raphael is ERC721Holder, Ownable, ReentrancyGuard {
                 }
             }
         }
-        emit EmergencyNFTApproval(_msgSender(), nftContractAddresses);
+
+        emit EmergencyNFTApproval(_msgSender(), nftContractAddresses, startIndex, endIndex);
     }
 
     /**
@@ -657,14 +654,7 @@ contract Raphael is ERC721Holder, Ownable, ReentrancyGuard {
         uint256 tokenId,
         bytes memory data
     ) public override notShutdown returns (bytes4) {
-        bool duplicate = false;
-        for (uint256 i = 0; i < nftContractAddresses.length; i++) {
-            if (nftContractAddresses[i] == _msgSender()) {
-                duplicate = true;
-                break;
-            }
-        }
-        if (!duplicate) nftContractAddresses.push(_msgSender());
+        nftContractAddresses.push(_msgSender());
 
         emit NFTReceived(_msgSender(), operator, tokenId);
 

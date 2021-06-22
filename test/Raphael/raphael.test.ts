@@ -1450,28 +1450,6 @@ describe("Raphael DAO contract", () => {
                         .to.equal(1);
                 });
 
-                it("does not add NFT contract address to nftContractAddresses if already present", async () => {
-                    expect((await raphael.getNftContractAddresses()).length)
-                        .to.equal(0);
-
-                    await mintUserNFT();
-
-                    await nft.connect(user).transfer(userAddress, raphael.address, BigNumber.from("1"));
-
-                    expect(await nft.ownerOf(BigNumber.from("1")))
-                        .to.equal(raphael.address);
-                    expect((await raphael.getNftContractAddresses())[0])
-                        .to.equal(nft.address);
-                    expect((await raphael.getNftContractAddresses()).length)
-                        .to.equal(1);
-
-                    await nft.connect(user).mint(raphael.address, BigNumber.from("2"));
-                    expect(await nft.ownerOf(BigNumber.from("2")))
-                        .to.equal(raphael.address);
-                    expect((await raphael.getNftContractAddresses()).length)
-                        .to.equal(1);
-                });
-
                 it("can transfer NFTs", async () => {
                     await mintUserNFT();
 
@@ -1487,32 +1465,7 @@ describe("Raphael DAO contract", () => {
                         .to.equal(userAddress);
                 });
 
-                it("removes contract address from nftContractAddresses if none are owned post-transfer", async () => {
-                    expect((await raphael.getNftContractAddresses()).length)
-                        .to.equal(0);
-
-                    await mintUserNFT();
-
-                    await nft.connect(user).transfer(userAddress, raphael.address, BigNumber.from("1"));
-
-                    expect(await nft.ownerOf(BigNumber.from("1")))
-                        .to.equal(raphael.address);
-                    expect((await raphael.getNftContractAddresses())[0])
-                        .to.equal(nft.address);
-                    expect((await raphael.getNftContractAddresses()).length)
-                        .to.equal(1);
-
-                    await raphael.connect(admin).transferNFT(nft.address, userAddress, BigNumber.from("1"));
-
-                    expect(await nft.ownerOf(BigNumber.from("1")))
-                        .to.equal(userAddress);
-                    expect((await raphael.getNftContractAddresses())[0])
-                        .to.equal(ethers.constants.AddressZero);
-                    expect((await raphael.getNftContractAddresses()).length)
-                        .to.equal(1);
-                });
-
-                it("does not remove contract address post-transfer if additional NFTs are still owned on the contract", async () => {
+                it("multiple listings from same contract allowed", async () => {
                     expect((await raphael.getNftContractAddresses()).length)
                         .to.equal(0);
 
@@ -1531,7 +1484,7 @@ describe("Raphael DAO contract", () => {
                     expect(await nft.ownerOf(BigNumber.from("2")))
                         .to.equal(raphael.address);
                     expect((await raphael.getNftContractAddresses()).length)
-                        .to.equal(1);
+                        .to.equal(2);
 
                     await raphael.connect(admin).transferNFT(nft.address, userAddress, BigNumber.from("1"));
 
@@ -1539,8 +1492,10 @@ describe("Raphael DAO contract", () => {
                         .to.equal(userAddress);
                     expect((await raphael.getNftContractAddresses())[0])
                         .to.equal(nft.address);
+                    expect((await raphael.getNftContractAddresses())[1])
+                        .to.equal(nft.address);
                     expect((await raphael.getNftContractAddresses()).length)
-                        .to.equal(1);
+                        .to.equal(2);
                 });
 
                 it("getNftContractAddresses returns the list of NFT contract addresses", async () => {
@@ -1562,28 +1517,6 @@ describe("Raphael DAO contract", () => {
                     addrs.forEach((addr: string, i: number) => {
                         expect(addr).to.equal(addrsFromContract[i]);
                     });
-                });
-
-                it("all non-zero addresses returned by getNftContractAddresses are unique", async () => {
-                    const NFT = await ethers.getContractFactory("MockNFT");
-                    const secondNFT = await NFT.deploy();
-                    await secondNFT.deployed();
-
-                    for (let i = 1; i < 11; i++) {
-                        // contract lets us switch off minting from different contracts
-                        const contract = i % 2 === 1 ? nft : secondNFT;
-                        await contract.connect(admin).mint(raphael.address, BigNumber.from(Math.floor(i / 2).toString()));
-
-                        expect(await contract.ownerOf(BigNumber.from(Math.floor(i / 2).toString())))
-                            .to.equal(raphael.address);
-                    }
-
-                    const nftContractAddressArray = await raphael.getNftContractAddresses();
-                    // by making this a set, any repeated values will be eliminated
-                    // if there are repeated addresses in the array, the lengths will be different
-                    const nftContractAddressSet = new Set(nftContractAddressArray);
-
-                    expect(nftContractAddressArray.length).to.equal(nftContractAddressSet.size);
                 });
             });
 
@@ -1741,174 +1674,6 @@ describe("Raphael DAO contract", () => {
                         .to.be.revertedWith("cannot be called after shutdown");
                 });
 
-                it("cancels pre-vote proposals", async () => {
-                    expect((await raphael.getProposalData(BigNumber.from("1")))[5])
-                        .to.equal(PROPOSAL_STATUS.VOTING_NOT_STARTED);
-
-                    await raphael.connect(admin).emergencyShutdown();
-
-                    expect((await raphael.getProposalData(BigNumber.from("1")))[5])
-                        .to.equal(PROPOSAL_STATUS.CANCELLED);
-                });
-
-                it("cancels proposals in active voting", async () => {
-                    let tx = await (await raphael.connect(admin).createProposal("Proposal n details")).wait()
-                    const filteredEvents = tx?.events.filter((eventItem: any) => eventItem.event === "ProposalCreated")
-                        .map((eventItem: any) => eventItem.args)
-                    const { proposalId, details, vote_start, vote_end } = filteredEvents[0];
-
-                    let blocks_skipped = vote_start.sub(BigNumber.from(tx.blockNumber))
-
-                    await skipBlocks(blocks_skipped)
-
-                    tx = await (await raphael.connect(admin).updateProposalStatus(proposalId)).wait();
-                    let status = (await raphael.getProposalData(proposalId))[5];
-                    expect(status).to.equal((BigNumber.from(PROPOSAL_STATUS.VOTING)));
-
-                    await raphael.connect(admin).emergencyShutdown();
-
-                    expect((await raphael.getProposalData(proposalId))[5])
-                        .to.equal(PROPOSAL_STATUS.CANCELLED);
-                });
-
-                it("cancels proposals of status VOTES_FINISHED", async () => {
-                    let tx = await (await raphael.connect(admin).createProposal("Proposal n details")).wait()
-                    const filteredEvents = tx?.events.filter((eventItem: any) => eventItem.event === "ProposalCreated")
-                        .map((eventItem: any) => eventItem.args)
-                    const { proposalId, details, vote_start, vote_end } = filteredEvents[0];
-
-                    let blocks_skipped = vote_start.sub(BigNumber.from(tx.blockNumber))
-
-                    await skipBlocks(blocks_skipped)
-
-                    tx = await (await raphael.connect(admin).updateProposalStatus(proposalId)).wait();
-                    let status = (await raphael.getProposalData(proposalId))[5];
-                    expect(status).to.equal((BigNumber.from(PROPOSAL_STATUS.VOTING)));
-
-                    await raphael.connect(user).vote(proposalId, true);
-
-                    await skipBlocks(BigNumber.from(VOTING_DURATION))
-
-                    await raphael.connect(admin).updateProposalStatus(proposalId)
-
-                    expect((await raphael.getProposalData(proposalId))[5])
-                        .to.equal(PROPOSAL_STATUS.VOTES_FINISHED);
-
-                    await raphael.connect(admin).emergencyShutdown();
-
-                    expect((await raphael.getProposalData(proposalId))[5])
-                        .to.equal(PROPOSAL_STATUS.CANCELLED);
-                });
-
-                it("does not cancel resolved proposals", async () => {
-                    let tx = await (await raphael.connect(admin).createProposal("Proposal n details")).wait()
-                    const filteredEvents = tx?.events.filter((eventItem: any) => eventItem.event === "ProposalCreated")
-                        .map((eventItem: any) => eventItem.args)
-                    const { proposalId, details, vote_start, vote_end } = filteredEvents[0];
-
-                    let blocks_skipped = vote_start.sub(BigNumber.from(tx.blockNumber))
-
-                    await skipBlocks(blocks_skipped)
-
-                    tx = await (await raphael.connect(admin).updateProposalStatus(proposalId)).wait();
-                    let status = (await raphael.getProposalData(proposalId))[5];
-                    expect(status).to.equal((BigNumber.from(PROPOSAL_STATUS.VOTING)));
-
-                    await raphael.connect(user).vote(proposalId, true);
-
-                    await skipBlocks(BigNumber.from(VOTING_DURATION))
-
-                    await raphael.connect(admin).updateProposalStatus(proposalId)
-
-                    expect((await raphael.getProposalData(proposalId))[5])
-                        .to.equal(PROPOSAL_STATUS.VOTES_FINISHED);
-
-                    tx = await raphael.connect(admin).setProposalToResolved(proposalId);
-
-                    await raphael.connect(admin).emergencyShutdown();
-
-                    expect((await raphael.getProposalData(proposalId))[5])
-                        .to.equal(PROPOSAL_STATUS.RESOLVED);
-                });
-
-                it("does not cancel proposals with failed quorum", async () => {
-                    let tx = await (await raphael.connect(admin).createProposal("Proposal n details")).wait()
-                    const filteredEvents = tx?.events.filter((eventItem: any) => eventItem.event === "ProposalCreated")
-                        .map((eventItem: any) => eventItem.args)
-                    const { proposalId, details, vote_start, vote_end } = filteredEvents[0];
-
-                    let blocks_skipped = vote_start.sub(BigNumber.from(tx.blockNumber))
-
-                    await skipBlocks(blocks_skipped)
-
-                    tx = await (await raphael.connect(admin).updateProposalStatus(proposalId)).wait();
-                    let status = (await raphael.getProposalData(proposalId))[5];
-                    expect(status).to.equal((BigNumber.from(PROPOSAL_STATUS.VOTING)));
-
-                    await skipBlocks(BigNumber.from(VOTING_DURATION))
-
-                    await raphael.connect(admin).updateProposalStatus(proposalId)
-
-                    expect((await raphael.getProposalData(proposalId))[5])
-                        .to.equal(PROPOSAL_STATUS.QUORUM_FAILED);
-
-                    await raphael.connect(admin).emergencyShutdown();
-
-                    expect((await raphael.getProposalData(proposalId))[5])
-                        .to.equal(PROPOSAL_STATUS.QUORUM_FAILED);
-                });
-
-                it("cancels proposals even with inactive proposals in the middle", async () => {
-                    [1, 2, 3, 4, 5].forEach(async (i: number) => await raphael.connect(admin).createProposal(`Proposal ${i} details`));
-
-                    const startBlock = await ethers.provider.getBlockNumber() + CREATE_TO_VOTE_PROPOSAL_DELAY;
-                    // add 5 to offset the 5 blocks of proposals from automining
-                    const endBlock = startBlock + 5 + VOTING_DURATION;
-
-                    const blocks_skipped = BigNumber.from(startBlock - await ethers.provider.getBlockNumber());
-                    await skipBlocks(blocks_skipped);
-
-                    await raphael.connect(user).updateProposalStatus(BigNumber.from(`2`));
-                    await raphael.connect(user).updateProposalStatus(BigNumber.from(`4`));
-
-                    expect(await raphael.connect(user).vote(BigNumber.from("2"), true));
-
-                    await skipBlocks(BigNumber.from(endBlock + 1 - await ethers.provider.getBlockNumber()));
-
-                    await raphael.connect(user).updateProposalStatus(BigNumber.from(`2`));
-                    await raphael.connect(user).updateProposalStatus(BigNumber.from(`4`));
-
-                    await raphael.connect(admin).setProposalToResolved(BigNumber.from("2"));
-
-                    for (let i = 1; i < 6; i++) {
-                        if (i === 2) {
-                            expect((await raphael.getProposalData(BigNumber.from(`${i}`)))[5])
-                                .to.equal(PROPOSAL_STATUS.RESOLVED);
-                        } else if (i == 4) {
-                            expect((await raphael.getProposalData(BigNumber.from(`${i}`)))[5])
-                                .to.equal(PROPOSAL_STATUS.QUORUM_FAILED);
-                        } else {
-                            expect((await raphael.getProposalData(BigNumber.from(`${i}`)))[5])
-                                .to.equal(PROPOSAL_STATUS.VOTING_NOT_STARTED);
-                        }
-                    }
-
-                    await raphael.connect(admin).emergencyShutdown();
-
-                    for (let i = 1; i < 6; i++) {
-                        if (i === 2) {
-                            expect((await raphael.getProposalData(BigNumber.from(`${i}`)))[5])
-                                .to.equal(PROPOSAL_STATUS.RESOLVED);
-                        } else if (i == 4) {
-                            expect((await raphael.getProposalData(BigNumber.from(`${i}`)))[5])
-                                .to.equal(PROPOSAL_STATUS.QUORUM_FAILED);
-                        } else {
-                            expect((await raphael.getProposalData(BigNumber.from(`${i}`)))[5])
-                                .to.equal(PROPOSAL_STATUS.CANCELLED);
-                        }
-                    }
-                });
-
                 it("locks emergencyShutdown", async () => {
                     await raphael.connect(admin).emergencyShutdown();
 
@@ -1926,88 +1691,270 @@ describe("Raphael DAO contract", () => {
                         .to.be.true;
                 });
 
-                it("approves admins on all NFT contracts", async () => {
-                    await mintNFTs();
+                describe("post-shutdown functions: proposals", async () => {
+                    it("emergency proposal cancellation is locked before shutdown", async () => {
+                        await expect(raphael.connect(admin).emergencyProposalCancellation(BigNumber.from("1"), BigNumber.from("2")))
+                            .to.be.revertedWith("can only call after shutdown");
+                    });
 
-                    const nftContractAddresses = await raphael.getNftContractAddresses();
-                    expect(nftContractAddresses.length).to.equal(2);
-                    expect(nftContractAddresses[0]).to.equal(nft.address);
-                    expect(nftContractAddresses[1]).to.equal(secondNFT.address);
+                    it("reverts if end index isn't greater than start index", async () => {
+                        await raphael.connect(admin).emergencyShutdown();
+                        await expect(raphael.connect(admin).emergencyProposalCancellation(BigNumber.from("1"), BigNumber.from("1")))
+                            .to.be.revertedWith("end index must be > start index");
+                    });
 
-                    await raphael.connect(admin).emergencyShutdown();
+                    it("reverts if index 0 is given", async () => {
+                        await raphael.connect(admin).emergencyShutdown();
+                        await expect(raphael.connect(admin).emergencyProposalCancellation(ethers.constants.Zero, BigNumber.from("1")))
+                            .to.be.revertedWith("starting index must exceed 0");
+                    });
 
-                    nftContractAddresses.forEach(async (addr: string) => {
-                        const contract = new ethers.Contract(addr, nftArtifact.abi, ethers.provider);
-                        expect(await contract.isApprovedForAll(raphael.address, adminAddress))
+                    it("reverts if index is too high", async () => {
+                        await raphael.connect(admin).emergencyShutdown();
+                        await expect(raphael.connect(admin).emergencyProposalCancellation(BigNumber.from("1"), BigNumber.from("100")))
+                            .to.be.revertedWith("end index > proposal count + 1");
+                    });
+
+                    it("cancels pre-vote proposals", async () => {
+                        expect((await raphael.getProposalData(BigNumber.from("1")))[5])
+                            .to.equal(PROPOSAL_STATUS.VOTING_NOT_STARTED);
+    
+                        await raphael.connect(admin).emergencyShutdown();
+                        await raphael.connect(admin).emergencyProposalCancellation(BigNumber.from("1"), BigNumber.from("2"));
+    
+                        expect((await raphael.getProposalData(BigNumber.from("1")))[5])
+                            .to.equal(PROPOSAL_STATUS.CANCELLED);
+                    });
+    
+                    it("cancels proposals in active voting", async () => {
+                        let tx = await (await raphael.connect(admin).createProposal("Proposal n details")).wait()
+                        const filteredEvents = tx?.events.filter((eventItem: any) => eventItem.event === "ProposalCreated")
+                            .map((eventItem: any) => eventItem.args)
+                        const { proposalId, details, vote_start, vote_end } = filteredEvents[0];
+    
+                        let blocks_skipped = vote_start.sub(BigNumber.from(tx.blockNumber))
+    
+                        await skipBlocks(blocks_skipped)
+    
+                        tx = await (await raphael.connect(admin).updateProposalStatus(proposalId)).wait();
+                        let status = (await raphael.getProposalData(proposalId))[5];
+                        expect(status).to.equal((BigNumber.from(PROPOSAL_STATUS.VOTING)));
+    
+                        await raphael.connect(admin).emergencyShutdown();
+                        await raphael.connect(admin).emergencyProposalCancellation(proposalId, proposalId.add(1));
+    
+                        expect((await raphael.getProposalData(proposalId))[5])
+                            .to.equal(PROPOSAL_STATUS.CANCELLED);
+                    });
+    
+                    it("cancels proposals of status VOTES_FINISHED", async () => {
+                        let tx = await (await raphael.connect(admin).createProposal("Proposal n details")).wait()
+                        const filteredEvents = tx?.events.filter((eventItem: any) => eventItem.event === "ProposalCreated")
+                            .map((eventItem: any) => eventItem.args)
+                        const { proposalId, details, vote_start, vote_end } = filteredEvents[0];
+    
+                        let blocks_skipped = vote_start.sub(BigNumber.from(tx.blockNumber))
+    
+                        await skipBlocks(blocks_skipped)
+    
+                        tx = await (await raphael.connect(admin).updateProposalStatus(proposalId)).wait();
+                        let status = (await raphael.getProposalData(proposalId))[5];
+                        expect(status).to.equal((BigNumber.from(PROPOSAL_STATUS.VOTING)));
+    
+                        await raphael.connect(user).vote(proposalId, true);
+    
+                        await skipBlocks(BigNumber.from(VOTING_DURATION))
+    
+                        await raphael.connect(admin).updateProposalStatus(proposalId)
+    
+                        expect((await raphael.getProposalData(proposalId))[5])
+                            .to.equal(PROPOSAL_STATUS.VOTES_FINISHED);
+    
+                        await raphael.connect(admin).emergencyShutdown();
+                        await raphael.connect(admin).emergencyProposalCancellation(proposalId, proposalId.add(1));
+    
+                        expect((await raphael.getProposalData(proposalId))[5])
+                            .to.equal(PROPOSAL_STATUS.CANCELLED);
+                    });
+    
+                    it("does not cancel resolved proposals", async () => {
+                        let tx = await (await raphael.connect(admin).createProposal("Proposal n details")).wait()
+                        const filteredEvents = tx?.events.filter((eventItem: any) => eventItem.event === "ProposalCreated")
+                            .map((eventItem: any) => eventItem.args)
+                        const { proposalId, details, vote_start, vote_end } = filteredEvents[0];
+    
+                        let blocks_skipped = vote_start.sub(BigNumber.from(tx.blockNumber))
+    
+                        await skipBlocks(blocks_skipped)
+    
+                        tx = await (await raphael.connect(admin).updateProposalStatus(proposalId)).wait();
+                        let status = (await raphael.getProposalData(proposalId))[5];
+                        expect(status).to.equal((BigNumber.from(PROPOSAL_STATUS.VOTING)));
+    
+                        await raphael.connect(user).vote(proposalId, true);
+    
+                        await skipBlocks(BigNumber.from(VOTING_DURATION))
+    
+                        await raphael.connect(admin).updateProposalStatus(proposalId)
+    
+                        expect((await raphael.getProposalData(proposalId))[5])
+                            .to.equal(PROPOSAL_STATUS.VOTES_FINISHED);
+    
+                        tx = await raphael.connect(admin).setProposalToResolved(proposalId);
+    
+                        await raphael.connect(admin).emergencyShutdown();
+                        await raphael.connect(admin).emergencyProposalCancellation(proposalId, proposalId.add(1));
+    
+                        expect((await raphael.getProposalData(proposalId))[5])
+                            .to.equal(PROPOSAL_STATUS.RESOLVED);
+                    });
+    
+                    it("does not cancel proposals with failed quorum", async () => {
+                        let tx = await (await raphael.connect(admin).createProposal("Proposal n details")).wait()
+                        const filteredEvents = tx?.events.filter((eventItem: any) => eventItem.event === "ProposalCreated")
+                            .map((eventItem: any) => eventItem.args)
+                        const { proposalId, details, vote_start, vote_end } = filteredEvents[0];
+    
+                        let blocks_skipped = vote_start.sub(BigNumber.from(tx.blockNumber))
+    
+                        await skipBlocks(blocks_skipped)
+    
+                        tx = await (await raphael.connect(admin).updateProposalStatus(proposalId)).wait();
+                        let status = (await raphael.getProposalData(proposalId))[5];
+                        expect(status).to.equal((BigNumber.from(PROPOSAL_STATUS.VOTING)));
+    
+                        await skipBlocks(BigNumber.from(VOTING_DURATION))
+    
+                        await raphael.connect(admin).updateProposalStatus(proposalId)
+    
+                        expect((await raphael.getProposalData(proposalId))[5])
+                            .to.equal(PROPOSAL_STATUS.QUORUM_FAILED);
+    
+                        await raphael.connect(admin).emergencyShutdown();
+                        await raphael.connect(admin).emergencyProposalCancellation(proposalId, proposalId.add(1));
+    
+                        expect((await raphael.getProposalData(proposalId))[5])
+                            .to.equal(PROPOSAL_STATUS.QUORUM_FAILED);
+                    });
+    
+                    it("cancels proposals even with inactive proposals in the middle", async () => {
+                        [1, 2, 3, 4, 5].forEach(async (i: number) => await raphael.connect(admin).createProposal(`Proposal ${i} details`));
+    
+                        const startBlock = await ethers.provider.getBlockNumber() + CREATE_TO_VOTE_PROPOSAL_DELAY;
+                        // add 5 to offset the 5 blocks of proposals from automining
+                        const endBlock = startBlock + 5 + VOTING_DURATION;
+    
+                        const blocks_skipped = BigNumber.from(startBlock - await ethers.provider.getBlockNumber());
+                        await skipBlocks(blocks_skipped);
+    
+                        await raphael.connect(user).updateProposalStatus(BigNumber.from(`2`));
+                        await raphael.connect(user).updateProposalStatus(BigNumber.from(`4`));
+    
+                        expect(await raphael.connect(user).vote(BigNumber.from("2"), true));
+    
+                        await skipBlocks(BigNumber.from(endBlock + 1 - await ethers.provider.getBlockNumber()));
+    
+                        await raphael.connect(user).updateProposalStatus(BigNumber.from(`2`));
+                        await raphael.connect(user).updateProposalStatus(BigNumber.from(`4`));
+    
+                        await raphael.connect(admin).setProposalToResolved(BigNumber.from("2"));
+    
+                        for (let i = 1; i < 6; i++) {
+                            if (i === 2) {
+                                expect((await raphael.getProposalData(BigNumber.from(`${i}`)))[5])
+                                    .to.equal(PROPOSAL_STATUS.RESOLVED);
+                            } else if (i == 4) {
+                                expect((await raphael.getProposalData(BigNumber.from(`${i}`)))[5])
+                                    .to.equal(PROPOSAL_STATUS.QUORUM_FAILED);
+                            } else {
+                                expect((await raphael.getProposalData(BigNumber.from(`${i}`)))[5])
+                                    .to.equal(PROPOSAL_STATUS.VOTING_NOT_STARTED);
+                            }
+                        }
+    
+                        await raphael.connect(admin).emergencyShutdown();
+                        await raphael.connect(admin).emergencyProposalCancellation(BigNumber.from("1"), BigNumber.from("6"));
+    
+                        for (let i = 1; i < 6; i++) {
+                            if (i === 2) {
+                                expect((await raphael.getProposalData(BigNumber.from(`${i}`)))[5])
+                                    .to.equal(PROPOSAL_STATUS.RESOLVED);
+                            } else if (i == 4) {
+                                expect((await raphael.getProposalData(BigNumber.from(`${i}`)))[5])
+                                    .to.equal(PROPOSAL_STATUS.QUORUM_FAILED);
+                            } else {
+                                expect((await raphael.getProposalData(BigNumber.from(`${i}`)))[5])
+                                    .to.equal(PROPOSAL_STATUS.CANCELLED);
+                            }
+                        }
+                    });
+                })
+
+                describe("post-shutdown functions: NFTs", async () => {
+                    it("emergency approval is locked before shutdown", async () => {
+                        await expect(raphael.connect(admin).emergencyNftApproval(BigNumber.from("0"), BigNumber.from("1")))
+                            .to.be.revertedWith("can only call after shutdown");
+                    });
+
+                    it("reverts if end index isn't greater than start index", async () => {
+                        await raphael.connect(admin).emergencyShutdown();
+                        await expect(raphael.connect(admin).emergencyNftApproval(BigNumber.from("1"), BigNumber.from("1")))
+                            .to.be.revertedWith("end index must be > start index");
+                    });
+
+                    it("reverts if index is too high", async () => {
+                        await raphael.connect(admin).emergencyShutdown();
+                        await expect(raphael.connect(admin).emergencyNftApproval(BigNumber.from("0"), BigNumber.from("100")))
+                            .to.be.revertedWith("end index > nft array len");
+                    });
+
+                    it("approves admins on all NFT contracts", async () => {
+                        await mintNFTs();
+    
+                        const nftContractAddresses = await raphael.getNftContractAddresses();
+                        expect(nftContractAddresses.length).to.equal(10);
+                        expect(nftContractAddresses[0]).to.equal(nft.address);
+                        expect(nftContractAddresses[1]).to.equal(secondNFT.address);
+    
+                        await raphael.connect(admin).emergencyShutdown();
+                        await raphael.connect(admin).emergencyNftApproval(BigNumber.from("0"), BigNumber.from("10"));
+    
+                        nftContractAddresses.forEach(async (addr: string) => {
+                            const contract = new ethers.Contract(addr, nftArtifact.abi, ethers.provider);
+                            expect(await contract.isApprovedForAll(raphael.address, adminAddress))
+                                .to.be.true;
+                        });
+                    });
+    
+                    it("testing evilness of evil NFTs", async () => {
+                        await mintandTransferEvilNFT();
+                        await evilNFT.connect(user).mint(userAddress, BigNumber.from("2"));
+    
+                        await expect(evilNFT.connect(user).setApprovalForAll(adminAddress, true))
+                            .to.be.revertedWith("not gonna shut down now, are you?");
+                    });
+    
+                    it("evil NFTs do not cause Emergency NFT Approval to revert", async () => {
+                        await mintandTransferEvilNFT();
+    
+                        await raphael.connect(admin).emergencyShutdown();
+                        await expect(raphael.connect(admin).emergencyNftApproval(BigNumber.from("0"), BigNumber.from("1")))
+                            .to.not.be.reverted;
+                    });
+    
+                    it("evil NFTs do not stop real NFTs from being approved", async () => {
+                        await mintandTransferEvilNFT();
+                        await mintNFTs();
+
+                        await raphael.connect(admin).emergencyShutdown();
+                        await expect(raphael.connect(admin).emergencyNftApproval(BigNumber.from("0"), BigNumber.from("3")))
+                            .to.not.be.reverted;
+                        expect(await nft.isApprovedForAll(raphael.address, adminAddress))
+                            .to.be.true;
+                        expect(await secondNFT.isApprovedForAll(raphael.address, adminAddress))
                             .to.be.true;
                     });
-                });
-
-                it("emergency NFT approval works even after contracts have been removed from nftContractAddresses", async () => {
-                    const NFT = await ethers.getContractFactory("MockNFT");
-                    secondNFT = await NFT.deploy();
-                    await secondNFT.deployed();
-
-                    await nft.connect(user).mint(raphael.address, BigNumber.from("1"));
-
-                    expect(await nft.ownerOf(BigNumber.from("1")))
-                        .to.equal(raphael.address);
-                    expect((await raphael.getNftContractAddresses())[0])
-                        .to.equal(nft.address);
-                    expect((await raphael.getNftContractAddresses()).length)
-                        .to.equal(1);
-
-                    await raphael.connect(admin).transferNFT(nft.address, userAddress, BigNumber.from("1"));
-
-                    expect(await nft.ownerOf(BigNumber.from("1")))
-                        .to.equal(userAddress);
-                    expect((await raphael.getNftContractAddresses())[0])
-                        .to.equal(ethers.constants.AddressZero);
-                    expect((await raphael.getNftContractAddresses()).length)
-                        .to.equal(1);
-
-                    await secondNFT.connect(user).mint(raphael.address, BigNumber.from("1"));
-
-                    expect(await secondNFT.ownerOf(BigNumber.from("1")))
-                        .to.equal(raphael.address);
-                    expect((await raphael.getNftContractAddresses())[0])
-                        .to.equal(ethers.constants.AddressZero);
-                    expect((await raphael.getNftContractAddresses())[1])
-                        .to.equal(secondNFT.address);
-                    expect((await raphael.getNftContractAddresses()).length)
-                        .to.equal(2);
-
-                    await raphael.connect(admin).emergencyShutdown();
-
-                    expect(await nft.isApprovedForAll(raphael.address, adminAddress))
-                        .to.be.false;
-                    expect(await secondNFT.isApprovedForAll(raphael.address, adminAddress))
-                        .to.be.true;
-                });
-
-                it("testing evilness of evil NFTs", async () => {
-                    await mintandTransferEvilNFT();
-                    await evilNFT.connect(user).mint(userAddress, BigNumber.from("2"));
-
-                    await expect(evilNFT.connect(user).setApprovalForAll(adminAddress, true))
-                        .to.be.revertedWith("not gonna shut down now, are you?");
-                });
-
-                it("evil NFTs do not cause Emergency Shutdown to revert", async () => {
-                    await mintandTransferEvilNFT();
-
-                    await expect(raphael.connect(admin).emergencyShutdown())
-                        .to.not.be.reverted;
-                });
-
-                it("evil NFTs do not stop real NFTs from being approved", async () => {
-                    await mintandTransferEvilNFT();
-                    await mintNFTs();
-
-                    await expect(raphael.connect(admin).emergencyShutdown())
-                        .to.not.be.reverted;
-                });
-                
+                });         
             })
         })
 
@@ -2285,71 +2232,6 @@ describe("Raphael DAO contract", () => {
                     await raphael.connect(admin).transferNativeToken(adminAddress, await raphael.getNativeTokenBalance());
                 });
 
-                it("emits ProposalStatusChanged if there is a proposal cancelled", async () => {
-                    await raphael.connect(user).createProposal("Proposal 1 details")
-
-                    await expect(raphael.connect(admin).emergencyShutdown())
-                        .to.emit(raphael, "ProposalStatusChanged")
-                        .withArgs(BigNumber.from("1"), PROPOSAL_STATUS.CANCELLED);
-                });
-
-                it("does not emit ProposalStatusChanged if there is no proposal cancelled", async () => {
-                    await expect(raphael.connect(admin).emergencyShutdown())
-                        .to.not.emit(raphael, "ProposalStatusChanged");
-                });
-
-                it("emits EmergencyNFTApproval on shutdown", async () => {
-                    await mintNfts();
-                    const nftContractAddresses = await raphael.getNftContractAddresses();
-
-                    await expect(raphael.connect(admin).emergencyShutdown())
-                        .to.emit(raphael, "EmergencyNFTApproval")
-                        .withArgs(adminAddress, nftContractAddresses);
-                });
-
-                it("emits an empty array if there were never NFTs", async () => {
-                    expect((await raphael.getNftContractAddresses()).length)
-                        .to.equal(0);
-
-                    await expect(raphael.connect(admin).emergencyShutdown())
-                        .to.emit(raphael, "EmergencyNFTApproval")
-                        .withArgs(adminAddress, []);
-                });
-
-                it("emits an array with only the zero address if there were NFTs but they were transferred", async () => {
-                    await mintNfts();
-                    // get rid of the NFTs from mintNFTs
-                    for (let i = 1; i < 6; i++) {
-                        await raphael.connect(admin).transferNFT(nft.address, userAddress, BigNumber.from(`${i - 1}`));
-                        await raphael.connect(admin).transferNFT(secondNFT.address, userAddress, BigNumber.from(`${i}`));
-                    };
-
-                    expect((await raphael.getNftContractAddresses()).length)
-                        .to.equal(2);
-                    expect((await raphael.getNftContractAddresses())[0])
-                        .to.equal(ethers.constants.AddressZero);
-                    expect((await raphael.getNftContractAddresses())[1])
-                        .to.equal(ethers.constants.AddressZero);
-
-                    await expect(raphael.connect(admin).emergencyShutdown())
-                        .to.emit(raphael, "EmergencyNFTApproval")
-                        .withArgs(adminAddress, [ethers.constants.AddressZero, ethers.constants.AddressZero]);
-                });
-
-                it("emits EmergencyNFTApprovalFail if there are evil NFTs", async () => {
-                    await mintandTransferEvilNFT();
-
-                    await expect(raphael.connect(admin).emergencyShutdown())
-                        .to.emit(raphael, "EmergencyNFTApprovalFail")
-                        .withArgs(evilNFT.address);
-                });
-
-                it("does not emit EmergencyNFTApprovalFail if there are not evil NFTs", async () => {
-                    await mintNfts();
-                    await expect(raphael.connect(admin).emergencyShutdown())
-                        .to.not.emit(raphael, "EmergencyNFTApprovalFail");
-                });
-
                 it("EmergencyShutdown emitted properly", async () => {
                     await expect(raphael.connect(admin).emergencyShutdown())
                         .to.emit(raphael, "EmergencyShutdown")
@@ -2357,6 +2239,59 @@ describe("Raphael DAO contract", () => {
                         // the function returns the block before this tx is mined, and it's automined,
                         // so adding 1 gives the right block
                         .withArgs(adminAddress, BigNumber.from((await ethers.provider.getBlockNumber() + 1).toString()));
+                });
+
+                describe("Emergency Proposal Cancellation events", async () => {
+                    it("emits ProposalStatusChanged if there is a proposal cancelled", async () => {
+                        await raphael.connect(user).createProposal("Proposal 1 details")
+    
+                        await raphael.connect(admin).emergencyShutdown()
+                        await expect(raphael.connect(admin).emergencyProposalCancellation(BigNumber.from("1"), BigNumber.from("2")))
+                            .to.emit(raphael, "ProposalStatusChanged")
+                            .withArgs(BigNumber.from("1"), PROPOSAL_STATUS.CANCELLED);
+                    });
+    
+                    it("does not emit ProposalStatusChanged if there is no proposal cancelled", async () => {
+                        await expect(raphael.connect(admin).emergencyShutdown())
+                            .to.not.emit(raphael, "ProposalStatusChanged");
+                    });
+                });
+
+                describe("Emergency NFT Approval events", async () => {
+                    it("emits EmergencyNFTApproval on shutdown", async () => {
+                        await mintNfts();
+                        const nftContractAddresses = await raphael.getNftContractAddresses();
+    
+                        await raphael.connect(admin).emergencyShutdown();
+                        await expect(raphael.connect(admin).emergencyNftApproval(ethers.constants.Zero, BigNumber.from("1")))
+                            .to.emit(raphael, "EmergencyNFTApproval")
+                            .withArgs(adminAddress, nftContractAddresses, ethers.constants.Zero, BigNumber.from("1"));
+                    });
+    
+                    it("reverts if there were never NFTs", async () => {
+                        expect((await raphael.getNftContractAddresses()).length)
+                            .to.equal(0);
+    
+                        await raphael.connect(admin).emergencyShutdown();
+                        await expect(raphael.connect(admin).emergencyNftApproval(ethers.constants.Zero, BigNumber.from("1")))
+                            .to.be.revertedWith("end index > nft array len");
+                    });
+    
+                    it("emits EmergencyNFTApprovalFail if there are evil NFTs", async () => {
+                        await mintandTransferEvilNFT();
+    
+                        await raphael.connect(admin).emergencyShutdown();
+                        await expect(raphael.connect(admin).emergencyNftApproval(ethers.constants.Zero, BigNumber.from("1")))
+                            .to.emit(raphael, "EmergencyNFTApprovalFail")
+                            .withArgs(evilNFT.address);
+                    });
+    
+                    it("does not emit EmergencyNFTApprovalFail if there are not evil NFTs", async () => {
+                        await mintNfts();
+                        await raphael.connect(admin).emergencyShutdown();
+                        await expect(raphael.connect(admin).emergencyNftApproval(ethers.constants.Zero, BigNumber.from("10")))
+                            .to.not.emit(raphael, "EmergencyNFTApprovalFail");
+                    });
                 });
             })
         })
@@ -2480,6 +2415,19 @@ describe("Raphael DAO contract", () => {
 
             it("emergencyShutdown cannot be called by non-owner", async () => {
                 await expect(raphael.connect(user).emergencyShutdown())
+                    .to.be.revertedWith("Ownable: caller is not the owner");
+            });
+
+            it("emergencyProposalCancellation cannot be called by non-owner", async () => {
+                await raphael.connect(admin).emergencyShutdown();
+                await expect(raphael.connect(user).emergencyProposalCancellation(BigNumber.from("1"), BigNumber.from("2")))
+                    .to.be.revertedWith("Ownable: caller is not the owner");
+            });
+
+            it("emergencyNftApproval cannot be called by non-owner", async () => {
+                await nft.connect(admin).mint(raphael.address, BigNumber.from("1"));
+                await raphael.connect(admin).emergencyShutdown();
+                await expect(raphael.connect(user).emergencyNftApproval(BigNumber.from("0"), BigNumber.from("1")))
                     .to.be.revertedWith("Ownable: caller is not the owner");
             });
 
