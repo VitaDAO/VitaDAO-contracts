@@ -84,9 +84,9 @@ async function main() {
       console.log(chalk.greenBright.bold("Token, DAO, and Staking contracts deployed!"));
 
       // initial setup - set token and staking address on DAO
-      dao.contract.setNativeTokenAddress(tokenAddress);
+      await dao.contract.setNativeTokenAddress(tokenAddress);
       console.log(`Token address set in DAO to ${tokenAddress}`);
-      dao.contract.setStakingAddress(staking.address);
+      await dao.contract.setStakingAddress(staking.address);
       console.log(`Staking address set in DAO to ${staking.address}`);
 
       break;
@@ -94,24 +94,28 @@ async function main() {
     case "goerli":
       tokenAddress = process.env.GOERLI_VITA_ADDRESS;
       dao = await deploy("Raphael");
+      contracts.push(dao);
       staking = await deploy("Staking", [tokenAddress, dao.address]);
+      contracts.push(staking);
 
       // initial setup
-      dao.contract.setNativeTokenAddress(tokenAddress);
+      await dao.contract.setNativeTokenAddress(tokenAddress);
       console.log(`Token address set in DAO to ${tokenAddress}`);
-      dao.contract.setStakingAddress(staking.address);
+      await dao.contract.setStakingAddress(staking.address);
       console.log(`Staking address set in DAO to ${staking.address}`);
 
       break;
     case "rinkeby":
       tokenAddress = process.env.RINKEBY_VITA_ADDRESS;
       dao = await deploy("Raphael");
+      contracts.push(dao);
       staking = await deploy("Staking", [tokenAddress, dao.address]);
+      contracts.push(staking);
 
       // initial setup
-      dao.contract.setNativeTokenAddress(tokenAddress);
+      await dao.contract.setNativeTokenAddress(tokenAddress);
       console.log(`Token address set in DAO to ${tokenAddress}`);
-      dao.contract.setStakingAddress(staking.address);
+      await dao.contract.setStakingAddress(staking.address);
       console.log(`Staking address set in DAO to ${staking.address}`);
 
       break;
@@ -119,15 +123,19 @@ async function main() {
     case "mainnet":
       tokenAddress = process.env.MAINNET_VITA_ADDRESS;
       dao = await deploy("Raphael");
+      contracts.push(dao);
       staking = await deploy("Staking", [tokenAddress, dao.address]);
+      contracts.push(staking);
 
       // initial setup
-      dao.contract.setNativeTokenAddress(tokenAddress);
+      await dao.contract.setNativeTokenAddress(tokenAddress);
       console.log(`Token address set in DAO to ${tokenAddress}`);
-      dao.contract.setStakingAddress(staking.address);
+      await dao.contract.setStakingAddress(staking.address);
       console.log(`Staking address set in DAO to ${staking.address}`);
 
       break;
+    default:
+      console.log(chalk.magenta("Please switch network to localhost, rinkeby, goerli, or mainnet"));
   }
 
   // verification
@@ -174,7 +182,7 @@ async function main() {
           console.log(chalk.cyan(`✅ ${contract.name} verified!`));
         } catch (error) {
           // tslint:disable-next-line: no-console
-          console.log(error);
+          console.error(error);
         }
       }));
   }
