@@ -3,7 +3,7 @@ import "@nomiclabs/hardhat-etherscan";
 import chalk from "chalk";
 import fs from "fs";
 import { Contract } from "ethers";
-import cliProgress from "cli-progress";
+import ProgressBar from "progress";
 
 interface DeploymentObject {
   name: string;
@@ -33,6 +33,8 @@ const deploy = async (contractName: string, _args: any[] = [], overrides = {}, l
 
   return deployed
 }
+
+const pause = (time: number) => new Promise(resolve => setTimeout(resolve, time));
 
 const verifiableNetwork = ["mainnet", "ropsten", "rinkeby", "goerli", "kovan"];
 
@@ -76,13 +78,14 @@ async function main() {
     case "localhost":
       console.log("\nDeploying to localhost...")
       const token = await deploy("VITA", ["test VITA token", "tVITA", ethers.utils.parseUnits("64298880")]);
+      tokenAddress = token.address;
       dao = await deploy("Raphael");
       staking = await deploy("Staking", [token.address, dao.address]);
       console.log(chalk.greenBright.bold("Token, DAO, and Staking contracts deployed!"));
 
       // initial setup - set token and staking address on DAO
-      dao.contract.setNativeTokenAddress(token.address);
-      console.log(`Token address set in DAO to ${token.address}`);
+      dao.contract.setNativeTokenAddress(tokenAddress);
+      console.log(`Token address set in DAO to ${tokenAddress}`);
       dao.contract.setStakingAddress(staking.address);
       console.log(`Staking address set in DAO to ${staking.address}`);
 
@@ -90,6 +93,18 @@ async function main() {
     // testnet deploy, relies on previous token deployment
     case "goerli":
       tokenAddress = process.env.GOERLI_VITA_ADDRESS;
+      dao = await deploy("Raphael");
+      staking = await deploy("Staking", [tokenAddress, dao.address]);
+
+      // initial setup
+      dao.contract.setNativeTokenAddress(tokenAddress);
+      console.log(`Token address set in DAO to ${tokenAddress}`);
+      dao.contract.setStakingAddress(staking.address);
+      console.log(`Staking address set in DAO to ${staking.address}`);
+
+      break;
+    case "rinkeby":
+      tokenAddress = process.env.RINKEBY_VITA_ADDRESS;
       dao = await deploy("Raphael");
       staking = await deploy("Staking", [tokenAddress, dao.address]);
 
@@ -128,23 +143,21 @@ async function main() {
         the terminal process...`)
       );
 
-      const progressBar = new cliProgress.SingleBar({
-        format: 'CLI Progress |' + chalk.cyan('{bar}') + '| { percentage}%',
-        barCompleteChar: '\u2588',
-        barIncompleteChar: '\u2591',
-        hideCursor: true
-      }, cliProgress.Presets.shades_classic);
-      progressBar.start(120, 0);
+      const bar = new ProgressBar('Etherscan update: [:bar] :percent :etas', { 
+        total: 50,
+        complete: '\u2588',
+        incomplete: '\u2591',
+      });
 
+      // two minute timeout to let Etherscan update
       const timer = setInterval(() => {
-        counter++;
-        progressBar.update(counter);
-        if(counter >= progressBar.getTotal()){
+        bar.tick();
+        if(bar.complete) {
           clearInterval(timer);
-          progressBar.stop();
-          // onComplete.apply(this);
         }
-      }, 1000);
+      }, 2300);
+
+      await pause(120000);
 
       // tslint:disable-next-line: no-console
       console.log(chalk.cyan("\n🔍 Running Etherscan verification..."));
