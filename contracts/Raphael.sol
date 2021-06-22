@@ -73,7 +73,9 @@ contract Raphael is ERC721Holder, Ownable, ReentrancyGuard {
     event EmergencyShutdown(address triggeredBy, uint256 currentBlock);
     event EmergencyNFTApproval(
         address triggeredBy,
-        address[] nftContractAddresses
+        address[] nftContractAddresses,
+        uint256 startIndex,
+        uint256 endIndex
     );
     event EmergencyNFTApprovalFail(address nftContractAddress);
 
@@ -89,6 +91,11 @@ contract Raphael is ERC721Holder, Ownable, ReentrancyGuard {
 
     modifier notShutdown() {
         require(!shutdown, "cannot be called after shutdown");
+        _;
+    }
+
+    modifier onlyShutdown() {
+        require(shutdown, "can only call after shutdown");
         _;
     }
 
@@ -560,15 +567,6 @@ contract Raphael is ERC721Holder, Ownable, ReentrancyGuard {
             "NFT transfer failed"
         );
 
-        if (nftContract.balanceOf(address(this)) == 0) {
-            for (uint256 i = 0; i < nftContractAddresses.length; i++) {
-                if (nftContractAddresses[i] == nftContractAddress) {
-                    delete nftContractAddresses[i];
-                    break;
-                }
-            }
-        }
-
         emit NFTTransferred(nftContractAddress, recipient, tokenId);
         return true;
     }
@@ -577,16 +575,20 @@ contract Raphael is ERC721Holder, Ownable, ReentrancyGuard {
     // EMERGENCY SHUTDOWN //
     ////////////////////////
 
-    /**
-     * @dev allows the admins to shut down the DAO (proposals, voting, transfers)
-     * and also sweeps out any NFTs and native tokens owned by the DAO
-     *
-     * @notice this is an irreversible process!
-     */
-    function emergencyShutdown() public onlyOwner notShutdown nonReentrant {
-        // cancel all active proposals
+     /**
+      * @dev cancels unfinished proposals in a specific range
+      * @param startIndex       the index to start cancelling from
+      * @param endIndex         the index the cancelling will stop before
+      *
+      * @notice can only be called after shutdown, is called during shutdown
+      */
+    function emergencyProposalCancellation(uint256 startIndex, uint256 endIndex) external onlyShutdown onlyOwner {
+        require(endIndex > startIndex, "end index must be > start index");
         // there is no proposal in the zero slot
-        for (uint256 i = 1; i <= proposalCount; i++) {
+        require(startIndex > 0, "starting index must exceed 0");
+        // needs to be proposal count + 1 since end index is one past the last cancelled proposal
+        require(endIndex <= proposalCount + 1, "end index > proposal count + 1");
+        for (uint256 i = startIndex; i < endIndex; i++) {
             if (
                 proposals[i].status != ProposalStatus.RESOLVED &&
                 proposals[i].status != ProposalStatus.QUORUM_FAILED
@@ -595,12 +597,19 @@ contract Raphael is ERC721Holder, Ownable, ReentrancyGuard {
                 emit ProposalStatusChanged(i, ProposalStatus.CANCELLED);
             }
         }
+    }
 
-        IStaking stakingContract = IStaking(stakingContractAddress);
-        stakingContract.emergencyShutdown(_msgSender());
-
-        // approve all NFTs
-        for (uint256 i = 0; i < nftContractAddresses.length; i++) {
+    /**
+      * @dev approves admin on all NFT contracts
+      * @param startIndex       the index to start cancelling from
+      * @param endIndex         the index the cancelling will stop before
+      *
+      * @notice can only be called after shutdown, is called during shutdown
+      */
+    function emergencyNftApproval(uint256 startIndex, uint256 endIndex) external onlyOwner onlyShutdown {
+        require(endIndex > startIndex, "end index must be > start index");
+        require(endIndex <= nftContractAddresses.length, "end index > nft array len");
+        for (uint256 i = startIndex; i < endIndex; i++) {
             if (nftContractAddresses[i] != address(0)) {
                 IERC721 nftContract = IERC721(nftContractAddresses[i]);
                 if (!nftContract.isApprovedForAll(address(this), owner())) {
@@ -611,10 +620,20 @@ contract Raphael is ERC721Holder, Ownable, ReentrancyGuard {
                 }
             }
         }
-        emit EmergencyNFTApproval(_msgSender(), nftContractAddresses);
 
+        emit EmergencyNFTApproval(_msgSender(), nftContractAddresses, startIndex, endIndex);
+    }
+
+    /**
+     * @dev allows the admins to shut down the DAO (proposals, voting, transfers)
+     * and also sweeps out any NFTs and native tokens owned by the DAO
+     *
+     * @notice this is an irreversible process!
+     */
+    function emergencyShutdown() public onlyOwner notShutdown nonReentrant {  
+        IStaking stakingContract = IStaking(stakingContractAddress);
+        stakingContract.emergencyShutdown(_msgSender());
         shutdown = true;
-
         emit EmergencyShutdown(_msgSender(), block.number);
     }
 
@@ -635,14 +654,7 @@ contract Raphael is ERC721Holder, Ownable, ReentrancyGuard {
         uint256 tokenId,
         bytes memory data
     ) public override notShutdown returns (bytes4) {
-        bool duplicate = false;
-        for (uint256 i = 0; i < nftContractAddresses.length; i++) {
-            if (nftContractAddresses[i] == _msgSender()) {
-                duplicate = true;
-                break;
-            }
-        }
-        if (!duplicate) nftContractAddresses.push(_msgSender());
+        nftContractAddresses.push(_msgSender());
 
         emit NFTReceived(_msgSender(), operator, tokenId);
 

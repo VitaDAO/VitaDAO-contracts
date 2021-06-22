@@ -16,7 +16,12 @@ dotenv.config();
 const config = {
   defaultNetwork: "localhost",
   solidity: {
-    compilers: [{ version: "0.8.4", settings: {} }],
+    compilers: [{ version: "0.8.4", settings: {
+      optimizer: {
+        enabled: true,
+        runs: 200
+      }
+    } }],
   },
   paths: {
     sources: "./contracts",
