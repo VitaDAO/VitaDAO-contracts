@@ -85,9 +85,9 @@ async function main() {
 
       // initial setup - set token and staking address on DAO
       await dao.contract.setNativeTokenAddress(tokenAddress);
-      console.log(`Token address set in DAO to ${tokenAddress}`);
+      console.log(`Token address set in DAO to ${chalk.green(tokenAddress)}`);
       await dao.contract.setStakingAddress(staking.address);
-      console.log(`Staking address set in DAO to ${staking.address}`);
+      console.log(`Staking address set in DAO to ${chalk.green(staking.address)}`);
 
       break;
     // testnet deploy, relies on previous token deployment
@@ -100,9 +100,9 @@ async function main() {
 
       // initial setup
       await dao.contract.setNativeTokenAddress(tokenAddress);
-      console.log(`Token address set in DAO to ${tokenAddress}`);
+      console.log(`Token address set in DAO to ${chalk.green(tokenAddress)}`);
       await dao.contract.setStakingAddress(staking.address);
-      console.log(`Staking address set in DAO to ${staking.address}`);
+      console.log(`Staking address set in DAO to ${chalk.green(staking.address)}`);
 
       break;
     case "rinkeby":
@@ -114,9 +114,9 @@ async function main() {
 
       // initial setup
       await dao.contract.setNativeTokenAddress(tokenAddress);
-      console.log(`Token address set in DAO to ${tokenAddress}`);
+      console.log(`Token address set in DAO to ${chalk.green(tokenAddress)}`);
       await dao.contract.setStakingAddress(staking.address);
-      console.log(`Staking address set in DAO to ${staking.address}`);
+      console.log(`Staking address set in DAO to ${chalk.green(staking.address)}`);
 
       break;
     // mainnet deploy
@@ -129,9 +129,9 @@ async function main() {
 
       // initial setup
       await dao.contract.setNativeTokenAddress(tokenAddress);
-      console.log(`Token address set in DAO to ${tokenAddress}`);
+      console.log(`Token address set in DAO to ${chalk.green(tokenAddress)}`);
       await dao.contract.setStakingAddress(staking.address);
-      console.log(`Staking address set in DAO to ${staking.address}`);
+      console.log(`Staking address set in DAO to ${chalk.green(staking.address)}`);
 
       break;
     default:
@@ -169,7 +169,7 @@ async function main() {
 
       // tslint:disable-next-line: no-console
       console.log(chalk.cyan("\n🔍 Running Etherscan verification..."));
-      
+
       await Promise.all(contracts.map(async contract => {
         // tslint:disable-next-line: no-console
         console.log(`Verifying ${contract.name}...`);
@@ -178,11 +178,12 @@ async function main() {
             address: contract.address,
             constructorArguments: contract.args
           });
+          await pause(2000);
           // tslint:disable-next-line: no-console
           console.log(chalk.cyan(`✅ ${contract.name} verified!`));
         } catch (error) {
           // tslint:disable-next-line: no-console
-          console.error(error);
+          console.log(error);
         }
       }));
   }
