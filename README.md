@@ -43,31 +43,6 @@ Congratulations, at this point you can connect your wallet and begin to interact
 
 # Running Tests
 
-## Setting up for testing
-
-
-Before you run the tests, you need to make two changes to the contracts. 
-
-First, in [Raphael.sol](contracts/Raphael.sol) change the lines below to use the `for testing` values:
-
-```Solidity
-uint256 public CREATE_TO_VOTE_PROPOSAL_DELAY = 18500; // ~3 days
-uint256 public VOTING_DURATION = 30850; // ~5 days
-
-// for testing
-// uint256 public CREATE_TO_VOTE_PROPOSAL_DELAY = 5;
-// uint256 public VOTING_DURATION = 10;
-```
-
-Second, in [raphael.test.ts](test/Raphael/raphael.test.ts) change the value for these two constants to the much lower values in the comments: 
-
-```Solidity
-const CREATE_TO_VOTE_PROPOSAL_DELAY = 18500 //for shorter testing, use 5
-const VOTING_DURATION = 30850 //for shorter testing, use 10
-```
-
-If you fail to do this, the tests will take forever and ultimately fail when javascript runs out of memory. If that happens, Ctrl-C out of that process and use the testing timeouts above. 
-
 ## Test Against Local Chain (as you ran above)
 
 If you have the local development chain running, you can run the tests immediately from another terminal. 
