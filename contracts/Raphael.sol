@@ -459,7 +459,7 @@ contract Raphael is ERC721Holder, Ownable, ReentrancyGuard {
      * @param proposalIndex           key to proposal in mapping
      * @param _vote                   true = for, false = against
      */
-    function vote(uint256 proposalIndex, bool _vote) public notShutdown {
+    function vote(uint256 proposalIndex, bool _vote) public notShutdown nonReentrant {
         require(proposalIndex <= proposalCount && proposalIndex !=0, "Proposal doesn't exist");
 
         IStaking stakingContract = IStaking(stakingContractAddress);
@@ -606,7 +606,7 @@ contract Raphael is ERC721Holder, Ownable, ReentrancyGuard {
       *
       * @notice can only be called after shutdown, is called during shutdown
       */
-    function emergencyNftApproval(uint256 startIndex, uint256 endIndex) external onlyOwner onlyShutdown {
+    function emergencyNftApproval(uint256 startIndex, uint256 endIndex) external onlyOwner onlyShutdown nonReentrant {
         require(endIndex > startIndex, "end index must be > start index");
         require(endIndex <= nftContractAddresses.length, "end index > nft array len");
         for (uint256 i = startIndex; i < endIndex; i++) {
