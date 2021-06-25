@@ -501,8 +501,6 @@ contract Raphael is ERC721Holder, Ownable, ReentrancyGuard {
         emit Voted(_msgSender(), proposalIndex, stakedBalance, _vote);
     }
 
-    function delegate(address delegateAddress) public {}
-
     //////////////////////
     // ASSET MANAGEMENT //
     //////////////////////
