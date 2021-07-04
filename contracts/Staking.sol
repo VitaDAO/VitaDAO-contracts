@@ -9,8 +9,8 @@ contract Staking is IStaking, ReentrancyGuard {
     mapping(address => uint256) private _stakedBalances;
     mapping(address => uint256) private _unlockTimes;
 
-    address public tokenAddress;
-    address public daoAddress;
+    address private tokenAddress;
+    address private daoAddress;
     uint256 totalStakedBalance;
     bool shutdown=false;
 
