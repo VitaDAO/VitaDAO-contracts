@@ -34,8 +34,8 @@ contract Raphael is ERC721Holder, Ownable, ReentrancyGuard {
     mapping(uint256 => mapping(address => bool)) private voted; //global voted mapping
 
     uint256 public proposalCount;
-    uint256 public minVotesNeeded;
 
+    uint256 private minVotesNeeded;
     address private nativeTokenAddress;
     address private stakingContractAddress;
     address[] private nftContractAddresses;
