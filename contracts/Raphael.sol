@@ -104,6 +104,10 @@ contract Raphael is ERC721Holder, Ownable, ReentrancyGuard {
         minVotesNeeded = 9644832 * 1e17; // 5% of initial distribution
     }
 
+    function getDidIVote(uint256 proposalIndex) public view returns (bool) {
+        return voted[proposalIndex][_msgSender()];
+    }
+
     /**
      * @dev returns all data for a specified proposal
      * @param proposalIndex           uint index of proposal
