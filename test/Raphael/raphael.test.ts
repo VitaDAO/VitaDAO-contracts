@@ -243,11 +243,11 @@ describe("Raphael DAO contract", () => {
                     let status = (await raphael.getProposalData(proposalId))[5]
                     expect(status).to.equal((BigNumber.from(PROPOSAL_STATUS.VOTING))) // now in voting period
 
-                    let beforeVoteCast = await raphael.getDidVote(proposalId)
+                    let beforeVoteCast = await raphael.connect(user).getDidVote(proposalId);
                     expect(beforeVoteCast).to.equal(false)
                     
                     await raphael.connect(user).vote(proposalId, true)
-                    let afterVoteCast = await raphael.getDidVote(proposalId)
+                    let afterVoteCast = await raphael.connect(user).getDidVote(proposalId)
                     expect(afterVoteCast).to.equal(true)
                 });
 
