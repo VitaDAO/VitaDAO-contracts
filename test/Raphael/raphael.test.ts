@@ -224,8 +224,9 @@ describe("Raphael DAO contract", () => {
                     expect(votesAgainst.eq(ethers.constants.Zero))
                 });
 
+               
                 // tests vote()
-                it("getDidIVote returns correct values", async () => {
+                it("getDidVote returns correct values", async () => {
                     // Should start with 0 proposals
                     expect(await raphael.proposalCount()).to.equal(0);
                     let tx = await (await raphael.connect(admin).createProposal("Proposal n details")).wait()
@@ -242,22 +243,14 @@ describe("Raphael DAO contract", () => {
                     let status = (await raphael.getProposalData(proposalId))[5]
                     expect(status).to.equal((BigNumber.from(PROPOSAL_STATUS.VOTING))) // now in voting period
 
+                    let beforeVoteCast = await raphael.getDidVote(proposalId)
+                    expect(beforeVoteCast).to.equal(false)
                     
-
-                    // check user's balance (voting power)
-                    let userStakedBalance = await staking.getStakedBalance(userAddress)
-                    // user votes true (for)
                     await raphael.connect(user).vote(proposalId, true)
-                    // check current votes for and against proposal
-                    let proposalData = await raphael.getProposalData(proposalId)
-                    let votesFor = proposalData[1]
-                    let votesAgainst = proposalData[2]
-
-                    // expect votesFor to be user's token balance
-                    expect(votesFor).to.equal(userStakedBalance);
-                    // expect no votes against
-                    expect(votesAgainst.eq(ethers.constants.Zero))
+                    let afterVoteCast = await raphael.getDidVote(proposalId)
+                    expect(afterVoteCast).to.equal(true)
                 });
+
 
                 it("weights voting properly", async () => {
                     expect(await raphael.proposalCount()).to.equal(0);
