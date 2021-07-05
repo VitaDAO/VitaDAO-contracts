@@ -224,6 +224,34 @@ describe("Raphael DAO contract", () => {
                     expect(votesAgainst.eq(ethers.constants.Zero))
                 });
 
+               
+                // tests vote()
+                it("getDidVote returns correct values", async () => {
+                    // Should start with 0 proposals
+                    expect(await raphael.proposalCount()).to.equal(0);
+                    let tx = await (await raphael.connect(admin).createProposal("Proposal n details")).wait()
+                    const filteredEvents = tx?.events.filter((eventItem: any) => eventItem.event === "ProposalCreated")
+                        .map((eventItem: any) => eventItem.args)
+                    const { proposalId, vote_start } = filteredEvents[0];
+
+                    let blocks_skipped = vote_start.sub(BigNumber.from(tx.blockNumber))
+
+                    await skipBlocks(blocks_skipped)
+
+                    // updateProposalStatus to 1 = VOTING
+                    tx = await (await raphael.connect(admin).updateProposalStatus(proposalId)).wait()
+                    let status = (await raphael.getProposalData(proposalId))[5]
+                    expect(status).to.equal((BigNumber.from(PROPOSAL_STATUS.VOTING))) // now in voting period
+
+                    let beforeVoteCast = await raphael.connect(user).getDidVote(proposalId);
+                    expect(beforeVoteCast).to.equal(false)
+                    
+                    await raphael.connect(user).vote(proposalId, true)
+                    let afterVoteCast = await raphael.connect(user).getDidVote(proposalId)
+                    expect(afterVoteCast).to.equal(true)
+                });
+
+
                 it("weights voting properly", async () => {
                     expect(await raphael.proposalCount()).to.equal(0);
                     let tx = await (await raphael.connect(admin).createProposal("Proposal n details")).wait()
