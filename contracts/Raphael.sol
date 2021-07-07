@@ -42,14 +42,11 @@ contract Raphael is ERC721Holder, Ownable, ReentrancyGuard {
 
     bool private shutdown = false;
 
-    uint256 public CREATE_TO_VOTE_PROPOSAL_DELAY = 18500; // ~3 days
-    uint256 public VOTING_DURATION = 30850; // ~5 days
+    uint256 public CREATE_TO_VOTE_PROPOSAL_DELAY = 13091; // ~2 days
+    uint256 public VOTING_DURATION = 91636; // ~14 days
 
-    // comment out for testing
-    // uint256 public constant MIN_DURATION = 18500;
-    // remove testing value for production
-    uint256 public constant MIN_DURATION = 5; // testing value
-    uint256 public constant MAX_DURATION = 190000; // ~1 month
+    uint256 public constant MIN_DURATION = 5; // ~ 1 minute
+    uint256 public constant MAX_DURATION = 200000; // ~1 month
 
     event VotingDelayChanged(uint256 newDuration);
     event VotingDurationChanged(uint256 newDuration);
@@ -101,7 +98,7 @@ contract Raphael is ERC721Holder, Ownable, ReentrancyGuard {
 
     constructor() Ownable() {
         proposalCount = 0; //starts with 0 proposals
-        minVotesNeeded = 9644832 * 1e17; // 5% of initial distribution
+        minVotesNeeded = 965390 * 1e18; // 5% of initial distribution
     }
 
     function getDidVote(uint256 proposalIndex) public view returns (bool) {
