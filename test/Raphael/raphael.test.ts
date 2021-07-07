@@ -16,7 +16,7 @@ const PROPOSAL_STATUS = {
     QUORUM_FAILED: 5,
 }
 
-const MIN_QUORUM = ethers.utils.parseUnits("964483.2");
+const MIN_QUORUM = ethers.utils.parseUnits("965390");
 
 describe("Raphael DAO contract", () => {
     let accounts: Signer[];
@@ -1277,12 +1277,12 @@ describe("Raphael DAO contract", () => {
                 });
 
                 it("delay to voting cannot be more than maximum duration length", async () => {
-                    await expect(raphael.connect(admin).setVotingDelayDuration(BigNumber.from("190001")))
+                    await expect(raphael.connect(admin).setVotingDelayDuration(BigNumber.from("200001")))
                         .to.be.revertedWith("duration must be >5 <190000");
                 });
 
                 it("voting duration cannot be more than maximum duration length", async () => {
-                    await expect(raphael.connect(admin).setVotingDuration(BigNumber.from("190001")))
+                    await expect(raphael.connect(admin).setVotingDuration(BigNumber.from("200001")))
                         .to.be.revertedWith("duration must be >5 <190000");
                 });
             });
