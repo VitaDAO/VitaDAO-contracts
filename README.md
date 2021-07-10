@@ -3,6 +3,17 @@
 
 Governance Contracts for VitaDAO
 
+## Mainnet Deployment
+
+- ...
+
+## Rinkeby Testnet Deployment
+
+- Current Token Address: [0x10a2f70487e3a9db4dd48988990176e62724635a](https://rinkeby.etherscan.io/token/0x10a2f70487e3a9db4dd48988990176e62724635a)
+- Current Staking Contract Address: [0xddbb600e551aafe790b286303c31982eb36e6dc0](https://rinkeby.etherscan.io/address/0xddbb600e551aafe790b286303c31982eb36e6dc0)
+- Current DAO Contract Address: [0xa582e94080a45402aa46683f08db6e974ec3135c](https://rinkeby.etherscan.io/address/0xa582e94080a45402aa46683f08db6e974ec3135c)
+
+
 # Setting Up
 
 
