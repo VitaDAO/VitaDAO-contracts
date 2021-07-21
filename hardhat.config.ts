@@ -14,7 +14,7 @@ dotenv.config();
  */
 
 const config = {
-  defaultNetwork: "localhost",
+  defaultNetwork: "hardhat",
   solidity: {
     compilers: [{ version: "0.8.4", settings: {
       optimizer: {
@@ -47,14 +47,14 @@ const config = {
     },
     // networks without env vars set need to be commented out or they'll crash the script 
     // so only uncomment if the .env has been set
-    // rinkeby: {
-    //   url: `https://rinkeby.infura.io/v3/${process.env.RINKEBY_INFURA_KEY}`,
-    //   accounts: [`${process.env.RINKEBY_DEPLOYER_PRIV_KEY}`],
-    // },
-    // mainnet: {
-    //   url: `https://mainnet.infura.io/v3/${process.env.MAINNET_INFURA_KEY}`,
-    //   accounts: [`${process.env.MAINNET_DEPLOYER_PRIV_KEY}`],
-    // },
+    rinkeby: {
+      url: `https://rinkeby.infura.io/v3/${process.env.RINKEBY_INFURA_KEY}`,
+      accounts: [`${process.env.RINKEBY_DEPLOYER_PRIV_KEY}`],
+    },
+    mainnet: {
+      url: `https://mainnet.infura.io/v3/${process.env.MAINNET_INFURA_KEY}`,
+      accounts: [`${process.env.MAINNET_DEPLOYER_PRIV_KEY}`],
+    },
     // ropsten: {
     //   url: `https://ropsten.infura.io/v3/${process.env.ROPSTEN_INFURA_KEY}`,
     //   accounts: [`${process.env.ROPSTEN_DEPLOYER_PRIV_KEY}`],
