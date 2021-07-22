@@ -195,7 +195,7 @@ describe("Staking System", () => {
                     // we'll skip to the endTime block just to check
                     // there will be 3 blocks mined (outside skipping) in total, 
                     // so we subtract 3
-                    await skipBlocks(BigNumber.from(`${VOTING_DURATION - 3}`));
+                    await skipBlocks(BigNumber.from(`${VOTING_DURATION - 4}`));
 
                     // Should revert - not out of voting period
                     await expect(
